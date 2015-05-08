@@ -1,0 +1,17 @@
+{
+  "name": "lwm2m-client-linux",
+  "version": "0.0.1",
+  "description": "linux specific component for lwm2m-client",
+  "keywords": [],
+  "author": "Yogesh Pande <yogesh.pande@arm.com>",
+  "homepage": "https://github.com/ARMmbed/lwm2m-client-linux",
+  "licenses": [
+    {
+      "url": "https://spdx.org/licenses/Apache-2.0",
+      "type": "Apache-2.0"
+    }
+  ],
+  "dependencies": {
+  },
+  "targetDependencies": {}
+}

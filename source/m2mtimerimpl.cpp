@@ -34,8 +34,8 @@ M2MTimerImpl::M2MTimerImpl(M2MTimerObserver& observer)
 : _observer(observer),
   _single_shot(true),
   _interval(0),
-  _mtx(PTHREAD_MUTEX_INITIALIZER),
-  _rem_mtx(PTHREAD_MUTEX_INITIALIZER),
+  _mtx((pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER),
+  _rem_mtx((pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER),
   _started(0)
 {    
     __timer_impl = this;

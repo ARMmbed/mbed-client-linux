@@ -28,7 +28,8 @@ M2MConnectionHandlerImpl::~M2MConnectionHandlerImpl()
     }
 
     if (!pthread_equal(_listen_thread, pthread_self())) {
-        pthread_detach(_listen_thread);
+        pthread_join(_listen_thread,NULL);
+        pthread_cancel(_listen_thread);
     }
 
     shutdown(_socket_server,SHUT_RDWR);
@@ -86,28 +87,29 @@ void M2MConnectionHandlerImpl::data_receive(void *object)
     int16_t rcv_size=0;
     memset(_received_buffer, 0, 1024);
 
-    char rcv_in_addr[256];
-    memset(rcv_in_addr,0,32);
-    rcv_size=recvfrom(_socket_server, _received_buffer,
-                      1024, 0, (struct sockaddr *)&_sa_dst,
-                      (socklen_t*)&_slen_sa_dst);
-    if (rcv_size == -1) {
-       //TODO: Define receive error code
-        _observer.socket_error(2);
-    } else {
-        inet_ntop(AF_INET, &(_sa_dst.sin_addr),rcv_in_addr,INET_ADDRSTRLEN);
-        if(_received_packet_address) {
-            _received_packet_address->_port = ntohs(_sa_dst.sin_port);
-            memcpy(_received_packet_address->_address, &_sa_dst.sin_addr, 4);
-            _received_packet_address->_stack = _stack;
-            _received_packet_address->_length = 4;
+    while(1) {
+        char rcv_in_addr[256];
+        memset(rcv_in_addr,0,32);
+        rcv_size=recvfrom(_socket_server, _received_buffer,
+                          1024, 0, (struct sockaddr *)&_sa_dst,
+                          (socklen_t*)&_slen_sa_dst);
+        if (rcv_size == -1) {
+           //TODO: Define receive error code
+            _observer.socket_error(2);
+        } else {
+            inet_ntop(AF_INET, &(_sa_dst.sin_addr),rcv_in_addr,INET_ADDRSTRLEN);
+            if(_received_packet_address) {
+                _received_packet_address->_port = ntohs(_sa_dst.sin_port);
+                memcpy(_received_packet_address->_address, &_sa_dst.sin_addr, 4);
+                _received_packet_address->_stack = _stack;
+                _received_packet_address->_length = 4;
+            }
+        }
+        /* If message received.. */
+        if(rcv_size > 0 && _received_packet_address) {
+            _observer.data_available(_received_buffer,rcv_size,*_received_packet_address);
         }
     }
-    /* If message received.. */
-    if(rcv_size > 0 && _received_packet_address) {
-        _observer.data_available(_received_buffer,rcv_size,*_received_packet_address);
-    }
-    listen_for_data();
 }
 
 bool M2MConnectionHandlerImpl::send_data(uint8_t *data,

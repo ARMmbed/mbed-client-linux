@@ -51,7 +51,7 @@ public:
     /**
     * Callback function for timer completion.
     */
-    void timer_expired();
+    void timer_expired(bool single_shot);
 
     /**
      * Timer thread.

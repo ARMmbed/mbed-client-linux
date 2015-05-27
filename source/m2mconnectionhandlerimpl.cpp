@@ -8,8 +8,9 @@
 M2MConnectionHandlerImpl::M2MConnectionHandlerImpl(M2MConnectionObserver &observer,
                                            M2MInterface::NetworkStack stack)
 :_observer(observer),
- _stack(stack),
- _slen_sa_dst(sizeof(_sa_dst))
+ _stack(M2MInterface::Uninitialized),
+ _socket_server(-1),
+  _slen_sa_dst(sizeof(_sa_dst))
 {
     __connection_impl = this;
     _received_packet_address = (M2MConnectionObserver::SocketAddress *)malloc(sizeof(M2MConnectionObserver::SocketAddress));
@@ -17,7 +18,6 @@ M2MConnectionHandlerImpl::M2MConnectionHandlerImpl(M2MConnectionObserver &observ
         memset(_received_packet_address, 0, sizeof(M2MConnectionObserver::SocketAddress));
         _received_packet_address->_address = _received_address;
     }
-    _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 }
 
 M2MConnectionHandlerImpl::~M2MConnectionHandlerImpl()
@@ -53,21 +53,72 @@ bool M2MConnectionHandlerImpl::resolve_server_address(const String& server_addre
 {
     bool success = false;
     const char* address = server_address.c_str();
-    inet_pton(AF_INET, address, &_resolved_address);
 
-    if(_received_packet_address) {
-        success = true;
-        //TODO: Currently only handling IPv4 address, add support for IPv6 also
-        _received_packet_address->_port = ntohs(server_port);
-        memcpy(_received_packet_address->_address, _resolved_address, 4);
-        _received_packet_address->_stack = _stack;
-        _received_packet_address->_length = 4;
+    struct addrinfo *addr;
+    struct sockaddr_in *a;
+    struct sockaddr_in6 *a6;
+    int family;
+    int r;
 
-        _observer.address_ready(*_received_packet_address,server_type,server_port);
-    } else {
+    /* Resolve hostname of NSP */
+    r = getaddrinfo(address, NULL, NULL, &addr);
+    if (r == 0) {
+        /* Take the first address and give it to NSDL and EDTLS*/
+        family = addr[0].ai_family;
+        switch(family) {
+        case AF_INET:
+            char ip_address[INET_ADDRSTRLEN];
+            a = (struct sockaddr_in*)addr[0].ai_addr;
+            inet_ntop(AF_INET,&(a->sin_addr),ip_address,INET_ADDRSTRLEN);
+
+            if(_socket_server == -1) {
+               _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            }
+
+            inet_pton(AF_INET, ip_address, &_resolved_address);
+
+            if(_received_packet_address) {
+                success = true;
+                //Support for IPv4
+                _received_packet_address->_port = ntohs(server_port);
+                memcpy(_received_packet_address->_address, _resolved_address, 4);
+                _received_packet_address->_stack = M2MInterface::LwIP_IPv4;
+                _stack = M2MInterface::LwIP_IPv4;
+                _received_packet_address->_length = 4;
+            }
+            break;
+        case AF_INET6:
+            char ip6_address[INET6_ADDRSTRLEN];
+            a6 =  (struct sockaddr_in6*)addr[0].ai_addr;
+            inet_ntop(AF_INET6,&(a6->sin6_addr),ip6_address,INET6_ADDRSTRLEN);
+            if(_socket_server == -1) {
+               _socket_server=socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+            }
+
+            inet_pton(AF_INET6, ip6_address, &_resolved_address);
+
+            if(_received_packet_address) {
+                success = true;
+                //Support for IPv6
+                _received_packet_address->_port = ntohs(server_port);
+                memcpy(_received_packet_address->_address, _resolved_address, 16);
+                _received_packet_address->_stack = M2MInterface::LwIP_IPv6;
+                _stack = M2MInterface::LwIP_IPv6;
+                _received_packet_address->_length = 16;
+            }
+
+            break;
+        }
+        freeaddrinfo(addr);
+
+        if(success) {
+            _observer.address_ready(*_received_packet_address,server_type,server_port);
+        }
+    }
+    else {
         //TODO: Define memory fail error code
         _observer.socket_error(3);
-        }
+    }
     return success;
 }
 

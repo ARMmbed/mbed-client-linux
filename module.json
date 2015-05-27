@@ -1,6 +1,6 @@
 {
   "name": "lwm2m-client-linux",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "linux specific component for lwm2m-client",
   "private": true,
   "keywords": [],

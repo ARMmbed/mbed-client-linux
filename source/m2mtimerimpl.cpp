@@ -67,7 +67,7 @@ void M2MTimerImpl::start_timer( uint64_t interval,
 void M2MTimerImpl::stop_timer()
 {
     _started = 0;
-    if (!pthread_equal(_timer_th, pthread_self())) {
+    if (pthread_equal(_timer_th, pthread_self())) {
         if (0 == pthread_cancel(_timer_th)) {
             pthread_join(_timer_th, NULL);
             pthread_mutex_unlock(&_rem_mtx);
@@ -77,8 +77,9 @@ void M2MTimerImpl::stop_timer()
     _single_shot = false;
 }
 
-void M2MTimerImpl::timer_expired()
+void M2MTimerImpl::timer_expired(bool single_shot)
 {
+    _single_shot = single_shot;
     _started = 0;
     _observer.timer_expired();
     if(!_single_shot) {
@@ -93,5 +94,5 @@ void M2MTimerImpl::thread_function(void *object)
     usleep(thread_object->_interval * 1000);
     pthread_mutex_unlock(&thread_object->_rem_mtx);
     pthread_detach(thread_object->_timer_th);
-    thread_object->timer_expired();
+    thread_object->timer_expired(thread_object->_single_shot);
 }

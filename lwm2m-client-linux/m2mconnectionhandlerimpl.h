@@ -16,8 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <netdb.h>
 #include <signal.h> /* For SIGIGN and SIGINT */
 #include <unistd.h>
 #include <errno.h>
@@ -71,32 +69,12 @@ public:
                    sn_nsdl_addr_s *address_ptr);
 
     /**
-    * @brief Returns server port which is set.
-    * @return Port,Server port
-    */
-    uint16_t server_port();
-
-    /**
-    * @brief Returns listening port which is set.
-    * @return Port,Listening port
-    */
-    uint16_t listen_port();
-
-    /**
     * @brief Listens for incoming data from remote server
     * @return true if successful else false.
     */
     bool listen_for_data();
 
     void data_receive(void *object);
-
-private:
-
-    /**
-    * @brief Helper function to return NetworkStack for the stack type
-    * @return NetworkStack, NetworkStack type.
-    */
-    M2MInterface::NetworkStack network_stack();
 
 private:
 
@@ -113,10 +91,12 @@ private:
     uint8_t                                 _received_buffer[1024];
     uint8_t                                 _resolved_address[16];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
+    bool                                    _receive_data;
 
 
 friend class Test_M2MConnectionHandlerImpl;
-
+friend class Test_M2MConnectionHandlerImpl_linux;
+friend class M2MConnection_TestObserver;
 };
 #endif //M2M_CONNECTION_HANDLER_IMPL_H__
 

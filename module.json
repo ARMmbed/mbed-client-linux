@@ -1,6 +1,6 @@
 {
   "name": "lwm2m-client-linux",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "linux specific component for lwm2m-client",
   "private": true,
   "keywords": [],
@@ -11,6 +11,9 @@
       "url": "https://spdx.org/licenses/Apache-2.0",
       "type": "Apache-2.0"
     }
+  ],
+  "extraIncludes": [
+    "mbed-client-libservice"
   ],
   "dependencies": {},
   "targetDependencies": {}

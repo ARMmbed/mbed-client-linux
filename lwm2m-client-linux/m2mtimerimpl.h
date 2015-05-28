@@ -70,7 +70,7 @@ private:
     pthread_mutex_t     _rem_mtx;
     volatile int        _started;
 
-
+    friend class Test_M2MTimerImpl_linux;
 };
 
 #endif // M2M_TIMER_IMPL_H

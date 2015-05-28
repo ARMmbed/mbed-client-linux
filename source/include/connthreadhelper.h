@@ -5,8 +5,6 @@
 #define THREAD_HELPER_H
 
 class M2MConnectionHandlerImpl;
-class M2MTimerImpl;
-extern M2MTimerImpl  *__timer_impl;
 extern M2MConnectionHandlerImpl *__connection_impl;
 
 
@@ -14,7 +12,6 @@ extern M2MConnectionHandlerImpl *__connection_impl;
 extern "C" {
 #endif
 
-void* __thread_poll_function(void* object);
 void* __listen_data_function(void*);
 
 #ifdef __cplusplus

@@ -9,7 +9,6 @@
 #include "lwm2m-client/m2mtimerobserver.h"
 #include "include/timerthreadhelper.h"
 #include "lwm2m-client/m2mconfig.h"
-#include "libService/ns_trace.h"
 
 #define SLOT_NSECS (50000)
 
@@ -54,7 +53,6 @@ M2MTimerImpl::~M2MTimerImpl()
 void M2MTimerImpl::start_timer( uint64_t interval,
                                 bool single_shot)
 {
-    tr_debug("M2MTimerImpl::start_timer Interval %ld, single_shot : %d", interval, single_shot);
     _single_shot = single_shot;
     _interval =  interval ;
     pthread_mutex_lock(&_mtx);
@@ -69,7 +67,6 @@ void M2MTimerImpl::start_timer( uint64_t interval,
 
 void M2MTimerImpl::stop_timer()
 {
-    tr_debug("M2MTimerImpl::stop_timer Interval");
     _started = 0;
     if (pthread_equal(_timer_th, pthread_self())) {
         if (0 == pthread_cancel(_timer_th)) {
@@ -83,7 +80,6 @@ void M2MTimerImpl::stop_timer()
 
 void M2MTimerImpl::timer_expired(bool single_shot)
 {
-    tr_debug("M2MTimerImpl::timer_expired() single_shot %d", _single_shot);
     _single_shot = single_shot;
     _started = 0;
     _observer.timer_expired();
@@ -94,7 +90,6 @@ void M2MTimerImpl::timer_expired(bool single_shot)
 
 void M2MTimerImpl::thread_function(void *object)
 {
-    tr_debug("M2MTimerImpl::thread_function()");
     if(object) {
         M2MTimerImpl *thread_object = (M2MTimerImpl*) object;
         pthread_mutex_lock(&thread_object->_rem_mtx);

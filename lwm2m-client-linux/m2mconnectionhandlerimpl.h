@@ -74,6 +74,11 @@ public:
     */
     bool listen_for_data();
 
+    /**
+    * @brief Closes the open connection
+    */
+    void close_connection();
+
     void data_receive(void *object);
 
 private:
@@ -91,7 +96,7 @@ private:
     uint8_t                                 _received_buffer[1024];
     uint8_t                                 _resolved_address[16];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
-    bool                                    _receive_data;
+    volatile bool                           _receive_data;
 
 
 friend class Test_M2MConnectionHandlerImpl;

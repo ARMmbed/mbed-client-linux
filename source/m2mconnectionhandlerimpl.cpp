@@ -203,3 +203,7 @@ bool M2MConnectionHandlerImpl::send_data(uint8_t *data,
     return success;
 }
 
+void M2MConnectionHandlerImpl::close_connection()
+{
+    _receive_data = false;
+}

@@ -13,8 +13,9 @@ M2MConnectionHandlerImpl::M2MConnectionHandlerImpl(M2MConnectionObserver &observ
 :_observer(observer),
  _stack(M2MInterface::Uninitialized),
  _socket_server(-1),
-  _slen_sa_dst(sizeof(_sa_dst)),
-  _receive_data(false)
+ _slen_sa_dst(sizeof(_sa_dst)),
+ _listen_thread(0),
+ _receive_data(false)
 {
     __connection_impl = this;
     _received_packet_address = (M2MConnectionObserver::SocketAddress *)malloc(sizeof(M2MConnectionObserver::SocketAddress));
@@ -31,12 +32,15 @@ M2MConnectionHandlerImpl::~M2MConnectionHandlerImpl()
         _received_packet_address = NULL;
     }
 
-    if (!pthread_equal(_listen_thread, pthread_self())) {
-        pthread_join(_listen_thread,NULL);
-        pthread_cancel(_listen_thread);
+    if(_listen_thread > 0) {
+        if (!pthread_equal(_listen_thread, pthread_self())) {
+            pthread_join(_listen_thread,NULL);
+            pthread_cancel(_listen_thread);
+        }
     }
-
-    shutdown(_socket_server,SHUT_RDWR);
+    if(_socket_server > 0) {
+        shutdown(_socket_server,SHUT_RDWR);
+    }
     __connection_impl = NULL;
 }
 

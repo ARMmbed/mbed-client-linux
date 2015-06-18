@@ -35,6 +35,7 @@ M2MTimerImpl::M2MTimerImpl(M2MTimerObserver& observer)
 : _observer(observer),
   _single_shot(true),
   _interval(0),
+  _timer_th(0),
   _mtx((pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER),
   _rem_mtx((pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER),
   _started(0)
@@ -44,8 +45,10 @@ M2MTimerImpl::M2MTimerImpl(M2MTimerObserver& observer)
 
 M2MTimerImpl::~M2MTimerImpl()
 {
-    if (!pthread_equal(_timer_th, pthread_self())) {
-        pthread_cancel(_timer_th);
+    if(_timer_th > 0) {
+        if (!pthread_equal(_timer_th, pthread_self())) {
+            pthread_cancel(_timer_th);
+        }
     }
     __timer_impl = NULL;
 }
@@ -68,7 +71,7 @@ void M2MTimerImpl::start_timer( uint64_t interval,
 void M2MTimerImpl::stop_timer()
 {
     _started = 0;
-    if (pthread_equal(_timer_th, pthread_self())) {
+    if (!pthread_equal(_timer_th, pthread_self())) {
         if (0 == pthread_cancel(_timer_th)) {
             pthread_join(_timer_th, NULL);
             pthread_mutex_unlock(&_rem_mtx);

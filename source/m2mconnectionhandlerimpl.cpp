@@ -39,7 +39,9 @@ M2MConnectionHandlerImpl::~M2MConnectionHandlerImpl()
         }
     }
     if(_socket_server > 0) {
+        tr_debug("M2MConnectionHandlerImpl::~M2MConnectionHandlerImpl - shutdown server\n");
         shutdown(_socket_server,SHUT_RDWR);
+        _socket_server = -1;
     }
     __connection_impl = NULL;
 }
@@ -52,7 +54,7 @@ bool M2MConnectionHandlerImpl::bind_connection(const uint16_t listen_port)
 
     /* Listen to the port */
     _sa_src.sin_addr.s_addr = INADDR_ANY;
-    int ret = bind(_socket_server, (struct sockaddr *) &_sa_src, sizeof(_sa_src));
+    int ret = bind(_socket_server, (struct sockaddr *) &_sa_src, sizeof(sockaddr_in));
     return (ret == -1) ? false : true;
 }
 
@@ -151,13 +153,13 @@ void M2MConnectionHandlerImpl::data_receive(void *object)
     if(object != NULL){
         M2MConnectionHandlerImpl *thread_object = (M2MConnectionHandlerImpl*) object;
         if(thread_object) {
-            pthread_detach(thread_object->_listen_thread);
+            pthread_join(_listen_thread, NULL);
         }
         int16_t rcv_size=0;
         memset(_received_buffer, 0, 1024);
 
         while(_receive_data) {
-            char rcv_in_addr[256];
+            char rcv_in_addr[32];
             memset(rcv_in_addr,0,32);
             rcv_size=recvfrom(_socket_server, _received_buffer,
                               1024, 0, (struct sockaddr *)&_sa_dst,
@@ -193,8 +195,9 @@ bool M2MConnectionHandlerImpl::send_data(uint8_t *data,
         _sa_dst.sin_port = htons(address->port);
         memcpy(&_sa_dst.sin_addr, address->addr_ptr, address->addr_len);
 
-        if (sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, _slen_sa_dst)==-1) {
+        if (sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in))==-1) {
             //TODO: Define send error code
+            tr_debug("M2MConnectionHandlerImpl::send_data - Error Code is %d\n",errno);
             _observer.socket_error(1);
         } else {
              success = true;

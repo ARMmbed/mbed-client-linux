@@ -4,17 +4,18 @@
 #ifndef M2M_TIMER_IMPL_H
 #define M2M_TIMER_IMPL_H
 
-#include <pthread.h>
 #include <stdint.h>
+#include "include/threadhelper.h"
 
 class M2MTimerObserver;
+
 /**
  * @brief M2MTimerImpl
  * Private implementation class for timer, this can be
  * modified based on platform on which mbed client needs
  * to be used.
  */
-class M2MTimerImpl
+class M2MTimerImpl : public ThreadHelper
 {
 public:
 
@@ -51,24 +52,18 @@ public:
     /**
     * Callback function for timer completion.
     */
-    void timer_expired(bool single_shot);
+    void timer_expired();
 
-    /**
-     * Timer thread.
-     * Uses POSIX nanosleep() to sleep specific number of "slots"
-     * May wake up by signal, if requested, to get value for remaining sleep counter.
-     */
-    void thread_function(void *object);
+protected : // From ThreadHelper
+
+    virtual void run();
 
 private:
 
     M2MTimerObserver&   _observer;
     bool                _single_shot;
     uint64_t            _interval;
-    pthread_t           _timer_th;
-    pthread_mutex_t     _mtx;
-    pthread_mutex_t     _rem_mtx;
-    volatile int        _started;
+    volatile bool       _started;
 
     friend class Test_M2MTimerImpl_linux;
 };

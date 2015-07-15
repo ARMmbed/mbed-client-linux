@@ -3,9 +3,9 @@
  */
 #include "include/connthreadhelper.h"
 
-#include "lwm2m-client-linux/m2mconnectionhandlerimpl.h"
+#include "lwm2m-client-linux/m2mconnectionhandlerpimpl.h"
 
-M2MConnectionHandlerImpl *__connection_impl = NULL;
+M2MConnectionHandlerPimpl *__connection_impl = NULL;
 
 void* __listen_data_function(void* object)
 {

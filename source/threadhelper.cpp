@@ -1,4 +1,4 @@
-#include "include/threadhelper.h"
+#include "lwm2m-client-linux/threadhelper.h"
 
 ThreadHelper::ThreadHelper()
 :_thread_id(0)

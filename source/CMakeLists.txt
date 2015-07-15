@@ -3,9 +3,11 @@ find_package (Threads)
 
 add_library(lwm2m-client-linux
     m2mconnectionhandlerimpl.cpp
-    connthreadhelper.cpp
-    timerthreadhelper.cpp
+    m2mconnectionhandlerpimpl.cpp
     m2mtimerimpl.cpp
+    m2mtimerpimpl.cpp
+    connthreadhelper.cpp
+    threadhelper.cpp
 ) 
 
 target_link_libraries(lwm2m-client-linux

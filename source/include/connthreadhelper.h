@@ -4,8 +4,8 @@
 #ifndef THREAD_HELPER_H
 #define THREAD_HELPER_H
 
-class M2MConnectionHandlerImpl;
-extern M2MConnectionHandlerImpl *__connection_impl;
+class M2MConnectionHandlerPimpl;
+extern M2MConnectionHandlerPimpl *__connection_impl;
 
 
 #ifdef __cplusplus

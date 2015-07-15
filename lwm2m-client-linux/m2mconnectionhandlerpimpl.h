@@ -1,12 +1,13 @@
 /*
  * Copyright (c) 2015 ARM. All rights reserved.
  */
-#ifndef M2M_CONNECTION_HANDLER_IMPL_H__
-#define M2M_CONNECTION_HANDLER_IMPL_H__
+#ifndef M2M_CONNECTION_HANDLER_PIMPL_H__
+#define M2M_CONNECTION_HANDLER_PIMPL_H__
 
 #include "lwm2m-client/m2mconfig.h"
 #include "lwm2m-client/m2minterface.h"
 #include "lwm2m-client/m2mconnectionobserver.h"
+#include "lwm2m-client/m2mconnectionsecurity.h"
 #include "nsdl-c/sn_nsdl.h"
 
 #include <pthread.h>
@@ -20,26 +21,22 @@
 #include <unistd.h>
 #include <errno.h>
 
+class M2MConnectionHandler;
 
-/**
- * @brief M2MConnectionHandler.
- * This class handles the socket connection for LWM2M Client
- */
-
-class M2MConnectionHandlerImpl {
-
+class M2MConnectionHandlerPimpl {
 public:
 
     /**
     * @brief Constructor
     */
-    M2MConnectionHandlerImpl(M2MConnectionObserver &observer,
-                             M2MInterface::NetworkStack stack);
+    M2MConnectionHandlerPimpl(M2MConnectionHandler* base, M2MConnectionObserver &observer,
+                         M2MConnectionSecurity* sec,
+                         M2MInterface::NetworkStack stack);
 
     /**
     * @brief Destructor
     */
-    ~M2MConnectionHandlerImpl();
+    ~M2MConnectionHandlerPimpl();
 
     /**
     * @brief This binds the socket connection.
@@ -58,7 +55,8 @@ public:
     */
     bool resolve_server_address(const String& server_address,
                                 const uint16_t server_port,
-                                M2MConnectionObserver::ServerType server_type);
+                                M2MConnectionObserver::ServerType server_type,
+                                const M2MSecurity* security);
 
     /**
     * @brief Sends data, to the connected sent to server.
@@ -72,36 +70,57 @@ public:
     * @brief Listens for incoming data from remote server
     * @return true if successful else false.
     */
-    bool listen_for_data();
+    bool start_listening_for_data();
 
     /**
-    * @brief Closes the open connection
+    * @brief Stops listening for incoming data
     */
-    void close_connection();
+    void stop_listening();
 
+    /**
+     * @brief sendToSocket Sends directly to socket. This is used by
+     * security classes to send after data has been encrypted.
+     * @param buf Buffer to send
+     * @param len Length of a buffer
+     * @return Number of bytes sent or -1 if failed
+     */
+    int sendToSocket(const unsigned char *buf, size_t len);
+
+    /**
+     * @brief receiveFromSocket Receives directly from a socket. This
+     * is used by security classes to receive raw data to be decrypted.
+     * @param buf Buffer to send
+     * @param len Length of a buffer
+     * @return Number of bytes read or -1 if failed.
+     */
+    int receiveFromSocket(unsigned char *buf, size_t len);
+
+public:
     void data_receive(void *object);
 
-private:
 
+private:
+    M2MConnectionHandler                    *_base;
     M2MConnectionObserver                   &_observer;
+    M2MConnectionSecurity                   *_security_impl; //owned
+    bool                                    _use_secure_connection;
     String                                  _server_address;
     char                                    _receive_buffer[1024];
+    uint8_t                                 _resolved_address[16];
     M2MInterface::NetworkStack              _stack;
+    uint8_t                                 _received_address[16];
+    M2MConnectionObserver::SocketAddress    *_received_packet_address;
     int                                     _socket_server;
     struct sockaddr_in                      _sa_dst;
     struct sockaddr_in                      _sa_src;
     int                                     _slen_sa_dst;
-    M2MConnectionObserver::SocketAddress    *_received_packet_address;
-    uint8_t                                 _received_address[4];
     uint8_t                                 _received_buffer[1024];
-    uint8_t                                 _resolved_address[16];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
     volatile bool                           _receive_data;
 
-
-friend class Test_M2MConnectionHandlerImpl;
-friend class Test_M2MConnectionHandlerImpl_linux;
+friend class Test_M2MConnectionHandlerPimpl;
+friend class Test_M2MConnectionHandlerPimpl_linux;
 friend class M2MConnection_TestObserver;
 };
-#endif //M2M_CONNECTION_HANDLER_IMPL_H__
+#endif //M2M_CONNECTION_HANDLER_PIMPL_H__
 

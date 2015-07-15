@@ -8,7 +8,7 @@
 #include "include/connthreadhelper.h"
 #include "lwm2m-client/m2mconstants.h"
 #include "lwm2m-client/m2msecurity.h"
-#include "mbed-client-libservice/ns_trace.h"
+#include "ns_trace.h"
 
 M2MConnectionHandler::M2MConnectionHandler(M2MConnectionObserver &observer,
                                                    M2MConnectionSecurity *sec,

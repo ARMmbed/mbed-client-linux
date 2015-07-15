@@ -29,6 +29,7 @@ void M2MTimerPimpl::start_timer( uint64_t interval,
                                  M2MTimerObserver::Type type,
                                  bool single_shot)
 {
+    stop_timer();
     _dtls_type = false;
     _intermediate_interval = 0;
     _total_interval = 0;
@@ -36,18 +37,17 @@ void M2MTimerPimpl::start_timer( uint64_t interval,
     _single_shot = single_shot;
     _interval = interval;
     _type = type;
-    stop_timer();
     start();
 }
 
 void M2MTimerPimpl::start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type)
 {
+    stop_timer();
     _dtls_type = true;
     _intermediate_interval = 0;
     _total_interval = 0;
     _status = 0;
     _type = type;
-    stop_timer();
     start();
 }
 

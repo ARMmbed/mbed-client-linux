@@ -7,7 +7,7 @@
 #include "include/connthreadhelper.h"
 #include "lwm2m-client/m2mconstants.h"
 #include "lwm2m-client/m2msecurity.h"
-#include "ns_trace.h"
+#include "mbed-client-libservice/ns_trace.h"
 
 M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base, M2MConnectionObserver &observer,
                                                    M2MConnectionSecurity *sec,
@@ -41,8 +41,7 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 
     if(_listen_thread > 0) {
         if (!pthread_equal(_listen_thread, pthread_self())) {
-            pthread_join(_listen_thread,NULL);
-            pthread_cancel(_listen_thread);
+            pthread_detach(_listen_thread);
         }
     }
     if(_socket_server > 0) {
@@ -261,7 +260,7 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
             _sa_dst.sin_port = htons(address->port);
             memcpy(&_sa_dst.sin_addr, address->addr_ptr, address->addr_len);
 
-            if (sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, _slen_sa_dst)==-1) {
+            if (sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in))==-1) {
                 tr_debug("M2MConnectionHandlerPimpl::send_data - Error Code is %d\n",errno);
                 _observer.socket_error(1);
             } else {

@@ -8,7 +8,7 @@
 #include "lwm2m-client/m2minterface.h"
 #include "lwm2m-client/m2mconnectionobserver.h"
 #include "lwm2m-client/m2mconnectionsecurity.h"
-#include "sn_nsdl.h"
+#include "nsdl-c/sn_nsdl.h"
 
 #include <pthread.h>
 #include <arpa/inet.h>

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "threadhelper.h"
 
-#include "lwm2m-client/m2mtimerobserver.h"
+#include "mbed-client/m2mtimerobserver.h"
 
 class M2MTimerPimpl : public ThreadHelper {
 private:

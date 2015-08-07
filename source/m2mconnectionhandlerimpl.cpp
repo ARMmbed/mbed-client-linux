@@ -3,11 +3,11 @@
  */
 #include <sys/types.h>
 #include <netdb.h>
-#include "lwm2m-client/m2mconnectionhandler.h"
-#include "lwm2m-client-linux/m2mconnectionhandlerpimpl.h"
+#include "mbed-client/m2mconnectionhandler.h"
+#include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "include/connthreadhelper.h"
-#include "lwm2m-client/m2mconstants.h"
-#include "lwm2m-client/m2msecurity.h"
+#include "mbed-client/m2mconstants.h"
+#include "mbed-client/m2msecurity.h"
 
 M2MConnectionHandler::M2MConnectionHandler(M2MConnectionObserver &observer,
                                                    M2MConnectionSecurity *sec,

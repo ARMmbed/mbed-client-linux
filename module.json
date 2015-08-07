@@ -1,6 +1,6 @@
 {
   "name": "mbed-client-linux",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "linux specific component for mbed-client",
   "private": true,
   "keywords": [],

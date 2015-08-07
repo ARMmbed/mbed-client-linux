@@ -1,5 +1,5 @@
 {
-  "name": "lwm2m-client-linux",
+  "name": "mbed-client-linux",
   "version": "0.0.12",
   "description": "linux specific component for lwm2m-client",
   "private": true,

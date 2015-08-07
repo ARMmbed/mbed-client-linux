@@ -5,8 +5,8 @@
 #include <time.h>
 #include <errno.h>
 #include <signal.h>
-#include "lwm2m-client-linux/m2mtimerpimpl.h"
-#include "lwm2m-client/m2mtimerobserver.h"
+#include "mbed-client-linux/m2mtimerpimpl.h"
+#include "mbed-client/m2mtimerobserver.h"
 
 M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
 : _observer(observer),

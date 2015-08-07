@@ -3,7 +3,7 @@
  */
 #include "include/connthreadhelper.h"
 
-#include "lwm2m-client-linux/m2mconnectionhandlerpimpl.h"
+#include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 
 M2MConnectionHandlerPimpl *__connection_impl = NULL;
 

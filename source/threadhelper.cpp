@@ -1,4 +1,4 @@
-#include "lwm2m-client-linux/threadhelper.h"
+#include "mbed-client-linux/threadhelper.h"
 
 ThreadHelper::ThreadHelper()
 :_thread_id(0)

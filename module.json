@@ -1,11 +1,11 @@
 {
   "name": "mbed-client-linux",
   "version": "0.0.12",
-  "description": "linux specific component for lwm2m-client",
+  "description": "linux specific component for mbed-client",
   "private": true,
   "keywords": [],
   "author": "Yogesh Pande <yogesh.pande@arm.com>",
-  "homepage": "https://github.com/ARMmbed/lwm2m-client-linux",
+  "homepage": "https://github.com/ARMmbed/mbed-client-linux",
   "licenses": [
     {
       "url": "https://spdx.org/licenses/Apache-2.0",

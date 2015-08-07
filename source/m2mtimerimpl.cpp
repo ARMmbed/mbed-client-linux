@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2015 ARM. All rights reserved.
  */
-#include "lwm2m-client/m2mtimer.h"
-#include "lwm2m-client/m2mtimerobserver.h"
-#include "lwm2m-client/m2mconfig.h"
-#include "lwm2m-client-linux/m2mtimerpimpl.h"
+#include "mbed-client/m2mtimer.h"
+#include "mbed-client/m2mtimerobserver.h"
+#include "mbed-client/m2mconfig.h"
+#include "mbed-client-linux/m2mtimerpimpl.h"
 
 M2MTimer::M2MTimer(M2MTimerObserver& observer)
 : _observer(observer)

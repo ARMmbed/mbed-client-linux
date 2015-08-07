@@ -1,7 +1,7 @@
 # NB external pthreads dependency!!
 find_package (Threads)
 
-add_library(lwm2m-client-linux
+add_library(mbed-client-linux
     m2mconnectionhandlerimpl.cpp
     m2mconnectionhandlerpimpl.cpp
     m2mtimerimpl.cpp
@@ -10,7 +10,7 @@ add_library(lwm2m-client-linux
     threadhelper.cpp
 ) 
 
-target_link_libraries(lwm2m-client-linux
+target_link_libraries(mbed-client-linux
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

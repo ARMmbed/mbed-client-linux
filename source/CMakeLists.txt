@@ -2,9 +2,9 @@
 find_package (Threads)
 
 add_library(mbed-client-linux
-    m2mconnectionhandlerimpl.cpp
+    m2mconnectionhandler.cpp
     m2mconnectionhandlerpimpl.cpp
-    m2mtimerimpl.cpp
+    m2mtimer.cpp
     m2mtimerpimpl.cpp
     connthreadhelper.cpp
     threadhelper.cpp

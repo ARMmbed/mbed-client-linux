@@ -12,6 +12,8 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
 #ifndef M2M_CONNECTION_HANDLER_PIMPL_H__
 #define M2M_CONNECTION_HANDLER_PIMPL_H__
 

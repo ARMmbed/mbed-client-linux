@@ -12,6 +12,8 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
 #include <sys/types.h>
 #include <netdb.h>
 #include "mbed-client/m2mconnectionhandler.h"

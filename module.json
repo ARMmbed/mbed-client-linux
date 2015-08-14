@@ -6,12 +6,7 @@
   "keywords": [],
   "author": "Yogesh Pande <yogesh.pande@arm.com>",
   "homepage": "https://github.com/ARMmbed/mbed-client-linux",
-  "licenses": [
-    {
-      "url": "https://spdx.org/licenses/Apache-2.0",
-      "type": "Apache-2.0"
-    }
-  ],
+  "license": "Apache-2.0",
   "extraIncludes": [
     "mbed-client-libservice"
   ],

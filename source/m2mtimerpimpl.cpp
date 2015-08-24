@@ -83,7 +83,7 @@ void M2MTimerPimpl::run()
 {
     if(!_dtls_type){
         usleep(_interval * 1000);
-        timer_expired();        
+        timer_expired();
     }else{
         usleep(_intermediate_interval * 1000);
         _status++;

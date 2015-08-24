@@ -70,7 +70,7 @@ class ThreadHelper
 
 public:
 
-     pthread_t _thread_id;
+     pthread_t _thread_id;     
 
 friend class Test_ThreadHelper;
 };

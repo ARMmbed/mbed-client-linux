@@ -71,6 +71,7 @@ class ThreadHelper
 public:
 
      pthread_t _thread_id;
+     pthread_mutex_t lock;
 
 friend class Test_ThreadHelper;
 };

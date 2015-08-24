@@ -42,7 +42,6 @@ void M2MTimerPimpl::start_timer( uint64_t interval,
                                  M2MTimerObserver::Type type,
                                  bool single_shot)
 {
-    stop_timer();
     _dtls_type = false;
     _intermediate_interval = 0;
     _total_interval = 0;
@@ -75,10 +74,8 @@ void M2MTimerPimpl::stop_timer()
 void M2MTimerPimpl::timer_expired()
 {
     _observer.timer_expired(_type);
-    if(_single_shot) {
-        stop_timer();
-    } else {
-        start_timer(_interval, _type, false);
+    if(!_single_shot) {
+         start_timer(_interval, _type, false);
     }
 }
 
@@ -86,7 +83,7 @@ void M2MTimerPimpl::run()
 {
     if(!_dtls_type){
         usleep(_interval * 1000);
-        timer_expired();
+        timer_expired();        
     }else{
         usleep(_intermediate_interval * 1000);
         _status++;

@@ -33,7 +33,8 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
  _socket_server(-1),
  _slen_sa_dst(sizeof(_sa_dst)),
  _listen_thread(0),
- _receive_data(false)
+ _receive_data(false),
+  _listen_port(0)
 {
     __connection_impl = this;
     _received_packet_address = (M2MConnectionObserver::SocketAddress *)malloc(sizeof(M2MConnectionObserver::SocketAddress));
@@ -69,14 +70,12 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 
 bool M2MConnectionHandlerPimpl::bind_connection(const uint16_t listen_port)
 {
-    memset((char *) &_sa_src, 0, sizeof(_sa_src));
-    _sa_src.sin_family = AF_INET;
-    _sa_src.sin_port = htons(listen_port);
-
-    /* Listen to the port */
-    _sa_src.sin_addr.s_addr = INADDR_ANY;
-    int ret = bind(_socket_server, (struct sockaddr *) &_sa_src, sizeof(sockaddr_in));
-    return (ret == -1) ? false : true;
+    bool success = false;
+    if(_listen_port == 0) {
+         success = true;
+        _listen_port = listen_port;
+    }
+    return success;
 }
 
 bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_address,
@@ -108,6 +107,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
 
                 if(_socket_server == -1) {
                    _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+                   bind_socket();
                 }
 
                 inet_pton(AF_INET, ip_address, &_resolved_address);
@@ -131,6 +131,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 inet_ntop(AF_INET6,&(a6->sin6_addr),ip6_address,INET6_ADDRSTRLEN);
                 if(_socket_server == -1) {
                    _socket_server=socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+                   bind_socket();
                 }
 
                 inet_pton(AF_INET6, ip6_address, &_resolved_address);
@@ -253,6 +254,17 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
             }
         }
     }
+}
+
+void M2MConnectionHandlerPimpl::bind_socket()
+{
+    memset((char *) &_sa_src, 0, sizeof(_sa_src));
+    _sa_src.sin_family = AF_INET;
+    _sa_src.sin_port = htons(_listen_port);
+
+    /* Listen to the port */
+    _sa_src.sin_addr.s_addr = INADDR_ANY;
+    bind(_socket_server, (struct sockaddr *) &_sa_src, sizeof(_sa_src));
 }
 
 bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,

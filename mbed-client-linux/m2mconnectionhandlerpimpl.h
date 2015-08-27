@@ -113,6 +113,10 @@ public:
 
 
 private:
+
+    void bind_socket();
+
+private:
     M2MConnectionHandler                    *_base;
     M2MConnectionObserver                   &_observer;
     M2MConnectionSecurity                   *_security_impl; //owned
@@ -130,6 +134,7 @@ private:
     uint8_t                                 _received_buffer[1024];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
     volatile bool                           _receive_data;
+    uint16_t                                _listen_port;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_linux;

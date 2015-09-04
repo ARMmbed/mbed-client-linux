@@ -2,7 +2,6 @@
   "name": "mbed-client-linux",
   "version": "0.0.19",
   "description": "linux specific component for mbed-client",
-  "private": true,
   "keywords": [],
   "author": "Yogesh Pande <yogesh.pande@arm.com>",
   "homepage": "https://github.com/ARMmbed/mbed-client-linux",

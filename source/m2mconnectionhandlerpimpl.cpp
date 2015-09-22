@@ -303,47 +303,49 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                                      sn_nsdl_addr_s *address)
 {
     bool success = false;
-    if( _use_secure_connection ){
-        if( _security_impl->send_message(data, data_len) > 0){
-            success = true;
-            _observer.data_sent();
-        }else{
-            _observer.socket_error(1);
-        }
-    }else{
-        if(address) {
-            _sa_dst.sin_family = AF_INET;
-            _sa_dst.sin_port = htons(address->port);
-            memcpy(&_sa_dst.sin_addr, address->addr_ptr, address->addr_len);
-
-            ssize_t ret = -1;
-            if(_binding_mode == M2MInterface::TCP ||
-               _binding_mode == M2MInterface::TCP_QUEUE){
-                //We need to "shim" the length in front
-                uint16_t d_len = data_len+4;
-                uint8_t* d = (uint8_t*)malloc(data_len+4);
-
-                d[0] = (data_len >> 24 )& 0xff;
-                d[1] = (data_len >> 16 )& 0xff;
-                d[2] = (data_len >> 8 )& 0xff;
-                d[3] = data_len & 0xff;
-                memmove(d+4, data, data_len);
-                ret = sendto(_socket_server, d, d_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in));
-                free(d);
-            }else{
-                ret = sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in));
-            }
-
-            if (ret==-1) {
-                tr_debug("M2MConnectionHandlerPimpl::send_data - Error Code is %d\n",errno);
-                _observer.socket_error(1);
-            } else {
-                 success = true;
+    if(data){
+        if( _use_secure_connection ){
+            if( _security_impl->send_message(data, data_len) > 0){
+                success = true;
                 _observer.data_sent();
+            }else{
+                _observer.socket_error(1);
             }
-        } else {
-            //TODO: Define memory fail error code
-            _observer.socket_error(3);
+        }else{
+            if(address) {
+                _sa_dst.sin_family = AF_INET;
+                _sa_dst.sin_port = htons(address->port);
+                memcpy(&_sa_dst.sin_addr, address->addr_ptr, address->addr_len);
+
+                ssize_t ret = -1;
+                if(_binding_mode == M2MInterface::TCP ||
+                   _binding_mode == M2MInterface::TCP_QUEUE){
+                    //We need to "shim" the length in front
+                    uint16_t d_len = data_len+4;
+                    uint8_t* d = (uint8_t*)malloc(data_len+4);
+
+                    d[0] = (data_len >> 24 )& 0xff;
+                    d[1] = (data_len >> 16 )& 0xff;
+                    d[2] = (data_len >> 8 )& 0xff;
+                    d[3] = data_len & 0xff;
+                    memmove(d+4, data, data_len);
+                    ret = sendto(_socket_server, d, d_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in));
+                    free(d);
+                }else{
+                    ret = sendto(_socket_server, data, data_len, 0, (const struct sockaddr *)&_sa_dst, sizeof(sockaddr_in));
+                }
+
+                if (ret==-1) {
+                    tr_debug("M2MConnectionHandlerPimpl::send_data - Error Code is %d\n",errno);
+                    _observer.socket_error(1);
+                } else {
+                     success = true;
+                    _observer.data_sent();
+                }
+            } else {
+                //TODO: Define memory fail error code
+                _observer.socket_error(3);
+            }
         }
     }
     return success;

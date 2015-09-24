@@ -35,7 +35,7 @@ then
 fi
 
 OLD_VERSION=`sed -n 's#version##p' master/module.json | sed 's|[^0-9]*\([0-9\.]*\)|\1 |g'`
-NEW_VERSION=`sed -n 's#version##p' pull_reg/module.json | sed 's|[^0-9]*\([0-9\.]*\)|\1 |g'`
+NEW_VERSION=`sed -n 's#version##p' pull_req/module.json | sed 's|[^0-9]*\([0-9\.]*\)|\1 |g'`
 OLD_MAJOR=`echo $OLD_VERSION | cut -d "." -f 1`
 OLD_MINOR=`echo $OLD_VERSION | cut -d "." -f 2`
 OLD_PATCH=`echo $OLD_VERSION | cut -d "." -f 3`

@@ -57,14 +57,14 @@ bool M2MConnectionHandler::start_listening_for_data()
 }
 
 
-int M2MConnectionHandler::sendToSocket(const unsigned char *buf, size_t len)
+int M2MConnectionHandler::send_to_socket(const unsigned char *buf, size_t len)
 {
-    return _private_impl->sendToSocket(buf, len);
+    return _private_impl->send_to_socket(buf, len);
 }
 
-int M2MConnectionHandler::receiveFromSocket(unsigned char *buf, size_t len)
+int M2MConnectionHandler::receive_from_socket(unsigned char *buf, size_t len)
 {
-    return _private_impl->receiveFromSocket(buf, len);
+    return _private_impl->receive_from_socket(buf, len);
 }
 
 bool M2MConnectionHandler::send_data(uint8_t *data,

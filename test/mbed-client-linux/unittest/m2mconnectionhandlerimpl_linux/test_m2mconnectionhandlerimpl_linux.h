@@ -35,13 +35,11 @@ public:
 
     void test_start_listening_for_data();
 
-//    void test_data_receive();
-
     void test_stop_listening();
 
-    void test_sendToSocket();
+    void test_send_to_socket();
 
-    void test_receiveFromSocket();
+    void test_receive_from_socket();
 
 
     M2MConnectionHandler* handler;

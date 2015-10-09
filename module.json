@@ -1,6 +1,6 @@
 {
   "name": "mbed-client-linux",
-  "version": "1.0.3",
+  "version": "1.0.2",
   "description": "linux specific component for mbed-client",
   "keywords": [],
   "author": "Yogesh Pande <yogesh.pande@arm.com>",

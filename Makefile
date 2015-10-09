@@ -8,7 +8,6 @@ UNITTESTS := $(sort $(dir $(wildcard $(TEST_FOLDER)*/unittest/*)))
 TESTDIRS := $(UNITTESTS:%=build-%)
 CLEANTESTDIRS := $(UNITTESTS:%=clean-%)
 COVERAGEFILE := ./lcov/coverage.info
-
 #
 # Define compiler toolchain
 #

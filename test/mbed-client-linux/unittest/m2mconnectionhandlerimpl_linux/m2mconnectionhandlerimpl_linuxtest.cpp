@@ -67,14 +67,14 @@ TEST(M2MConnectionHandler_linux, test_stop_listening)
     handler->test_stop_listening();
 }
 
-TEST(M2MConnectionHandler_linux, test_sendToSocket)
+TEST(M2MConnectionHandler_linux, test_send_to_socket)
 {
-    handler->test_sendToSocket();
+    handler->test_send_to_socket();
 }
 
-TEST(M2MConnectionHandler_linux, test_receiveFromSocket)
+TEST(M2MConnectionHandler_linux, test_receive_from_socket)
 {
-    handler->test_receiveFromSocket();
+    handler->test_receive_from_socket();
 }
 
 

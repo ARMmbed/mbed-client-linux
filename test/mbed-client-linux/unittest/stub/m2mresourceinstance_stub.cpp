@@ -142,3 +142,7 @@ sn_coap_hdr_s* M2MResourceInstance::handle_post_request(nsdl_s *,
 {
     return m2mresourceinstance_stub::header;
 }
+
+void M2MResourceInstance::clear_value()
+{
+}

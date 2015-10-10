@@ -94,6 +94,10 @@ bool M2MResourceInstance::set_value(const uint8_t *,
     return m2mresourceinstance_stub::bool_value;
 }
 
+void M2MResourceInstance::clear_value()
+{
+}
+
 void M2MResourceInstance::execute(void *)
 {
 }
@@ -134,15 +138,4 @@ sn_coap_hdr_s* M2MResourceInstance::handle_put_request(nsdl_s *,
                                                M2MObservationHandler *)
 {
     return m2mresourceinstance_stub::header;
-}
-
-sn_coap_hdr_s* M2MResourceInstance::handle_post_request(nsdl_s *,
-                                                sn_coap_hdr_s *,
-                                                M2MObservationHandler *)
-{
-    return m2mresourceinstance_stub::header;
-}
-
-void M2MResourceInstance::clear_value()
-{
 }

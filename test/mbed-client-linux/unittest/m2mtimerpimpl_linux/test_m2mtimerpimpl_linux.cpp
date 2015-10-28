@@ -71,27 +71,4 @@ void Test_M2MTimerPimpl_linux::test_run()
 {
     timer->run();
     CHECK(observer->visited == true);
-
-    timer->_dtls_type = true;
-    timer->run();
-    CHECK(2 == timer->_status);
-}
-
-void Test_M2MTimerPimpl_linux::test_start_dtls_timer()
-{
-    timer->start_dtls_timer(10, 100, M2MTimerObserver::Dtls);
-}
-
-void Test_M2MTimerPimpl_linux::test_is_intermediate_interval_passed()
-{
-    CHECK(false == timer->is_intermediate_interval_passed());
-    timer->_status = 1;
-    CHECK(true == timer->is_intermediate_interval_passed());
-}
-
-void Test_M2MTimerPimpl_linux::test_is_total_interval_passed()
-{
-    CHECK(false == timer->is_total_interval_passed());
-    timer->_status = 2;
-    CHECK(true == timer->is_total_interval_passed());
 }

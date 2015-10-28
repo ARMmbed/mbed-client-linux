@@ -38,8 +38,10 @@ void M2MTimer::start_timer( uint64_t interval,
     _private_impl->start_timer(interval, type, single_shot);
 }
 
-void M2MTimer::start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type){
-    _private_impl->start_dtls_timer(intermediate_interval, total_interval, type);
+void M2MTimer::start_dtls_timer(uint64_t, uint64_t, M2MTimerObserver::Type){
+   //TODO: Not needed as we changed Linux sockets handling to timeout in socket level.
+  // API kept to maintain backward compatibility.
+    return;
 }
 
 void M2MTimer::stop_timer()
@@ -48,9 +50,9 @@ void M2MTimer::stop_timer()
 }
 
 bool M2MTimer::is_intermediate_interval_passed(){
-    return _private_impl->is_intermediate_interval_passed();
+    return false;
 }
 
 bool M2MTimer::is_total_interval_passed(){
-    return _private_impl->is_total_interval_passed();
+    return false;
 }

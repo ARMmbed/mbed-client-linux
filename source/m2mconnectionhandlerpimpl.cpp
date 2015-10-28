@@ -16,11 +16,14 @@
 
 #include <sys/types.h>
 #include <netdb.h>
+#include <time.h>
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2mconstants.h"
 #include "mbed-client/m2msecurity.h"
 #include "mbed-client-libservice/ns_trace.h"
+
+
 
 M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base, M2MConnectionObserver &observer,
                                                      M2MConnectionSecurity *sec,
@@ -39,6 +42,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
   _listen_port(0)
 {
     __connection_impl = this;
+    _timeout.tv_sec = 10;
     _received_packet_address = (M2MConnectionObserver::SocketAddress *)malloc(sizeof(M2MConnectionObserver::SocketAddress));
     if(_received_packet_address) {
         memset(_received_packet_address, 0, sizeof(M2MConnectionObserver::SocketAddress));
@@ -108,7 +112,6 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 inet_ntop(AF_INET,&(a->sin_addr),ip_address,INET_ADDRSTRLEN);
 
                 if(_socket_server == -1) {
-                   _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
                     if(_binding_mode == M2MInterface::TCP ||
                        _binding_mode == M2MInterface::TCP_QUEUE ){
@@ -116,6 +119,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                     }else{
                         _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
                     }
+                    setsockopt(_socket_server, SOL_SOCKET, SO_RCVTIMEO, (const char*)&_timeout, sizeof(_timeout));
                     bind_socket();
                 }
 
@@ -145,6 +149,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                     }else{
                         _socket_server=socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
                     }
+                    setsockopt(_socket_server, SOL_SOCKET, SO_RCVTIMEO, (const char*)&_timeout, sizeof(_timeout));
                     bind_socket();
                 }
 

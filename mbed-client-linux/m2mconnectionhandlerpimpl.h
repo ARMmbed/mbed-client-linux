@@ -137,6 +137,7 @@ private:
     pthread_t                               _listen_thread; /* Thread for Listen data function */
     volatile bool                           _receive_data;
     uint16_t                                _listen_port;
+    timeval                                 _timeout;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_linux;

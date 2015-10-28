@@ -78,3 +78,8 @@ void M2MConnectionHandler::stop_listening()
 {
     _private_impl->stop_listening();
 }
+
+void M2MConnectionHandler::handle_connection_error(int /*error*/)
+{
+    // TODO: Do nothing, this is for API compatibility purpose
+}

@@ -55,18 +55,3 @@ TEST(M2MTimerPimpl_linux, test_run)
 {
     m2m_timer->test_run();
 }
-
-TEST(M2MTimerPimpl_linux, test_start_dtls_timer)
-{
-    m2m_timer->test_start_dtls_timer();
-}
-
-TEST(M2MTimerPimpl_linux, test_is_intermediate_interval_passed)
-{
-    m2m_timer->test_is_intermediate_interval_passed();
-}
-
-TEST(M2MTimerPimpl_linux, test_is_total_interval_passed)
-{
-    m2m_timer->test_is_total_interval_passed();
-}

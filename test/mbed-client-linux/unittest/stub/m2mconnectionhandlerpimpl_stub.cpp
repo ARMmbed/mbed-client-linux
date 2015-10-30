@@ -85,3 +85,8 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
 {
 
 }
+
+void M2MConnectionHandlerPimpl::handle_connection_error(int )
+{
+
+}

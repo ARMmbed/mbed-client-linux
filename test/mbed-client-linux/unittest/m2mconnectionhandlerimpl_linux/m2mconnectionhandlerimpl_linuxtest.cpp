@@ -77,4 +77,8 @@ TEST(M2MConnectionHandler_linux, test_receive_from_socket)
     handler->test_receive_from_socket();
 }
 
+TEST(M2MConnectionHandler_linux, test_handle_connection_error)
+{
+    handler->test_handle_connection_error();
+}
 

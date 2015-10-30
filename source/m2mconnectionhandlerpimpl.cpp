@@ -207,7 +207,7 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
 
 int M2MConnectionHandlerPimpl::send_to_socket(const unsigned char *buf, size_t len)
 {
-    return sendto(_socket_server, (char*)buf, len, 0, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
+    //return sendto(_socket_server, (char*)buf, len, 0, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
 }
 
 int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf, size_t len)

@@ -109,6 +109,12 @@ public:
      */
     int receive_from_socket(unsigned char *buf, size_t len);
 
+    /**
+    * @brief Error handling for DTLS connectivity.
+    * @param error, Error code from TLS library
+    */
+    void handle_connection_error(int error);
+
 public:
     void data_receive(void *object);
 

@@ -54,10 +54,9 @@ void M2MTimerPimpl::start_timer( uint64_t interval,
 
 void M2MTimerPimpl::start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type)
 {
-    stop_timer();
     _dtls_type = true;
-    _intermediate_interval = 0;
-    _total_interval = 0;
+    _intermediate_interval = intermediate_interval;
+    _total_interval = total_interval;
     _status = 0;
     _type = type;
     start();
@@ -89,7 +88,7 @@ void M2MTimerPimpl::run()
         _status++;
         usleep((_total_interval - _intermediate_interval) * 1000);
         _status++;
-        stop_timer();
+        _observer.timer_expired(_type);
     }
 }
 

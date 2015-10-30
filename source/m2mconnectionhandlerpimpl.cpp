@@ -61,7 +61,7 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
         }
     }
     if(_socket_server > 0) {
-        tr_debug("M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl - shutdown server\n");
+        //tr_debug("M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl - shutdown server\n");
         shutdown(_socket_server,SHUT_RDWR);
         _socket_server = -1;
     }
@@ -101,7 +101,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
         family = addr->ai_family;
         switch(family) {
         case AF_INET:
-            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv4\n");
+            //tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv4\n");
             char ip_address[INET_ADDRSTRLEN];
             a = (struct sockaddr_in*)addr->ai_addr;
             if(a) {
@@ -133,7 +133,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
             }
             break;
         case AF_INET6:
-            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv6\n");
+            //tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv6\n");
             char ip6_address[INET6_ADDRSTRLEN];
             a6 =  (struct sockaddr_in6*)addr->ai_addr;
             if(a6) {
@@ -336,7 +336,7 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                 }
 
                 if (ret==-1) {
-                    tr_debug("M2MConnectionHandlerPimpl::send_data - Error Code is %d\n",errno);
+                    //tr_debug("M2MConnectionHandlerPimpl::send_data - Error Code is %d\n",errno);
                     _observer.socket_error(1);
                 } else {
                      success = true;
@@ -354,4 +354,10 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
 void M2MConnectionHandlerPimpl::stop_listening()
 {
     _receive_data = false;
+}
+
+void M2MConnectionHandlerPimpl::handle_connection_error(int /*error*/)
+{
+    //This will come from M2MConnectionSecurity class
+    _observer.socket_error(4);
 }

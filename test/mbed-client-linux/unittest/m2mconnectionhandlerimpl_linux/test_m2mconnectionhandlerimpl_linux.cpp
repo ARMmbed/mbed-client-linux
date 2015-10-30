@@ -164,3 +164,9 @@ void Test_M2MConnectionHandler_linux::test_receive_from_socket()
     handler->receive_from_socket(buf, 5);
     free(buf);
 }
+
+void Test_M2MConnectionHandler_linux::test_handle_connection_error()
+{
+    // To manage code coverage
+    handler->handle_connection_error(5);
+}

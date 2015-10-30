@@ -434,3 +434,9 @@ int connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
     return common_stub::int_value;
 }
 
+int setsockopt (int __fd, int __level, int __optname,
+               const void *__optval, socklen_t __optlen)
+    __THROW
+{
+    return common_stub::int_value;
+}

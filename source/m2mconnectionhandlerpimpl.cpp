@@ -124,7 +124,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 if(_received_packet_address) {
                     success = true;
                     //Support for IPv4
-                    _received_packet_address->_port = ntohs(server_port);
+                    _received_packet_address->_port = server_port;
                     memcpy(_received_packet_address->_address, _resolved_address, 4);
                     _received_packet_address->_stack = M2MInterface::LwIP_IPv4;
                     _stack = M2MInterface::LwIP_IPv4;
@@ -153,7 +153,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 if(_received_packet_address) {
                     success = true;
                     //Support for IPv6
-                    _received_packet_address->_port = ntohs(server_port);
+                    _received_packet_address->_port = server_port;
                     memcpy(_received_packet_address->_address, _resolved_address, 16);
                     _received_packet_address->_stack = M2MInterface::LwIP_IPv6;
                     _stack = M2MInterface::LwIP_IPv6;
@@ -165,7 +165,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
         freeaddrinfo(addr);
 
         _sa_dst.sin_family = AF_INET;
-        _sa_dst.sin_port = _received_packet_address->_port;
+        _sa_dst.sin_port = ntohs(server_port);
         memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
         connect((uint)_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
 
@@ -231,6 +231,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
             while(_receive_data){
                 int rcv_size = _security_impl->read(_received_buffer, 1024);
                 if(rcv_size > 0){
+                    _received_packet_address->_port = ntohs(_sa_dst.sin_port);
                     _observer.data_available(_received_buffer,rcv_size,*_received_packet_address);
                 }else if(rcv_size == 0){
                     //We are in initializing phase, so do nothing

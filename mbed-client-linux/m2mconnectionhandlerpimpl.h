@@ -21,6 +21,7 @@
 #include "mbed-client/m2minterface.h"
 #include "mbed-client/m2mconnectionobserver.h"
 #include "mbed-client/m2mconnectionsecurity.h"
+#include "mbed-client/m2mconstants.h"
 #include "nsdl-c/sn_nsdl.h"
 
 #include <pthread.h>
@@ -129,7 +130,7 @@ private:
     M2MConnectionSecurity                   *_security_impl; //owned
     bool                                    _use_secure_connection;
     String                                  _server_address;
-    char                                    _receive_buffer[1024];
+    char                                    _receive_buffer[BUFFER_LENGTH];
     uint8_t                                 _resolved_address[16];
     M2MInterface::BindingMode               _binding_mode;
     M2MInterface::NetworkStack              _stack;
@@ -139,7 +140,7 @@ private:
     struct sockaddr_in                      _sa_dst;
     struct sockaddr_in                      _sa_src;
     int                                     _slen_sa_dst;
-    uint8_t                                 _received_buffer[1024];
+    uint8_t                                 _received_buffer[BUFFER_LENGTH];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
     volatile bool                           _receive_data;
     uint16_t                                _listen_port;

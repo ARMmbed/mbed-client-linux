@@ -18,7 +18,6 @@
 #include <netdb.h>
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "include/connthreadhelper.h"
-#include "mbed-client/m2mconstants.h"
 #include "mbed-client/m2msecurity.h"
 #include "mbed-client-libservice/ns_trace.h"
 
@@ -225,11 +224,11 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
             pthread_join(_listen_thread, NULL);
         }
         int16_t rcv_size=0;
-        memset(_received_buffer, 0, 1024);
+        memset(_received_buffer, 0, BUFFER_LENGTH);
 
         if( _use_secure_connection ){
             while(_receive_data){
-                int rcv_size = _security_impl->read(_received_buffer, 1024);
+                int rcv_size = _security_impl->read(_received_buffer, BUFFER_LENGTH);
                 if(rcv_size > 0){
                     _received_packet_address->_port = ntohs(_sa_dst.sin_port);
                     _observer.data_available(_received_buffer,rcv_size,*_received_packet_address);
@@ -239,14 +238,14 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
                     _receive_data = false;
                     _observer.socket_error(1);
                 }
-                memset(_received_buffer, 0, 1024);
+                memset(_received_buffer, 0, BUFFER_LENGTH);
             }
         }else{
             while(_receive_data) {
                 char rcv_in_addr[256];
                 memset(rcv_in_addr,0,256);
                 rcv_size=recvfrom(_socket_server, _received_buffer,
-                                  1024, 0, (struct sockaddr *)&_sa_dst,
+                                  BUFFER_LENGTH, 0, (struct sockaddr *)&_sa_dst,
                                   (socklen_t*)&_slen_sa_dst);
                 if (rcv_size == -1) {
                    //TODO: Define receive error code
@@ -282,7 +281,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
                         _observer.data_available(_received_buffer,rcv_size,*_received_packet_address);
                     }
                 }
-                memset(_received_buffer, 0, 1024);
+                memset(_received_buffer, 0, BUFFER_LENGTH);
             }
         }
     }

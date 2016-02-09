@@ -149,8 +149,18 @@ void Test_M2MConnectionHandlerPimpl_linux::test_send_data()
     uint8_t* data = (uint8_t*)malloc(5);
     CHECK( false == handler->send_data(data, 0 , NULL));
 
+    handler->_stack = M2MInterface::LwIP_IPv4;
     common_stub::int_value = 4;
     CHECK(true == handler->send_data(data, 0 , addr));
+
+    handler->_stack = M2MInterface::LwIP_IPv6;
+    CHECK(true == handler->send_data(data, 0 , addr));
+
+    /*handler->_stack = M2MInterface::Uninitialized;
+
+    CHECK(true == handler->send_data(data, 0 , addr));
+
+    handler->_stack = M2MInterface::LwIP_IPv6;*/
 
     M2MConnectionHandlerPimpl* tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::Uninitialized);
     common_stub::int_value = 4;
@@ -183,12 +193,12 @@ void Test_M2MConnectionHandlerPimpl_linux::test_start_listening_for_data()
 void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
 {
     handler->data_receive(NULL);
-
+    handler->_stack = M2MInterface::LwIP_IPv4;
     M2MConnectionHandlerPimpl *obj = new M2MConnectionHandlerPimpl(NULL,
                                                                    *observer,
                                                                    NULL,
                                                                    M2MInterface::TCP_QUEUE,
-                                                                   M2MInterface::Uninitialized);
+                                                                   M2MInterface::LwIP_IPv4);
 
     handler->_receive_data = true;
     observer->error = false;
@@ -206,7 +216,7 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     CHECK(tcp_handler->_receive_data == false);
     delete tcp_handler;
 
-    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::Uninitialized);
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
     tcp_handler->_receive_data = true;
     observer->error = false;
     observer->set_class_object(tcp_handler);
@@ -214,21 +224,47 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     tcp_handler->data_receive(obj);
     CHECK(observer->error == false);
     CHECK(tcp_handler->_receive_data == false);
+
+    tcp_handler->_receive_data = true;
+    observer->error = false;
+    observer->set_class_object(tcp_handler);
+    common_stub::int_value = 2;
+    tcp_handler->data_receive(obj);
+    CHECK(observer->error == true);
+    CHECK(tcp_handler->_receive_data == false);
+
     delete tcp_handler;
 
     observer->set_class_object(handler);
-    handler->_receive_data = true;
+    handler->_receive_data = true;    
     observer->dataAvailable = false;
     common_stub::int_value = 6;
     handler->data_receive(obj);
     CHECK(observer->dataAvailable == true);
 
+    handler->_stack = M2MInterface::LwIP_IPv6;
+    handler->_receive_data = true;
+    observer->dataAvailable = false;
+    handler->data_receive(obj);
+    CHECK(observer->dataAvailable == true);
+
+    handler->_stack = M2MInterface::Uninitialized;
+    handler->_receive_data = true;
+    observer->error = false;
+    observer->dataAvailable = false;
+    handler->data_receive(obj);
+    CHECK(observer->error == true);
+    CHECK(observer->dataAvailable == false);
+
+    handler->_stack = M2MInterface::LwIP_IPv4;
     M2MConnectionSecurity* conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
     handler->_security_impl = conSec;
     handler->_use_secure_connection = true;
     handler->_receive_data = true;
     m2mconnectionsecurityimpl_stub::int_value = -1;
+    observer->error = false;
     handler->data_receive(obj);
+    CHECK(observer->error == true);
     CHECK(handler->_receive_data == false);
 
     observer->dataAvailable = false;
@@ -238,6 +274,25 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     handler->data_receive(obj);
     CHECK(handler->_receive_data == false);
     CHECK(observer->dataAvailable == true);
+
+    handler->_stack = M2MInterface::LwIP_IPv6;
+    observer->dataAvailable = false;
+    handler->_receive_data = true;
+    m2mconnectionsecurityimpl_stub::use_inc_int = true;
+    m2mconnectionsecurityimpl_stub::inc_int_value = 0;
+    handler->data_receive(obj);
+    CHECK(handler->_receive_data == false);
+    CHECK(observer->dataAvailable == true);
+
+    handler->_stack = M2MInterface::Uninitialized;
+    observer->dataAvailable = false;
+    handler->_receive_data = true;
+    m2mconnectionsecurityimpl_stub::use_inc_int = true;
+    m2mconnectionsecurityimpl_stub::inc_int_value = 0;
+    handler->data_receive(obj);
+    CHECK(handler->_receive_data == false);
+    CHECK(observer->dataAvailable == true);
+
     handler->_security_impl = NULL;
     delete conSec;
 
@@ -256,11 +311,21 @@ void Test_M2MConnectionHandlerPimpl_linux::test_send_to_socket()
 {
     const char buf[] = "hello";
     handler->send_to_socket((unsigned char *)&buf, 5);
+
+    handler->_stack = M2MInterface::LwIP_IPv4;
+    handler->send_to_socket((unsigned char *)&buf, 5);
+
+    handler->_stack = M2MInterface::LwIP_IPv6;
+    handler->send_to_socket((unsigned char *)&buf, 5);
 }
 
 void Test_M2MConnectionHandlerPimpl_linux::test_receive_from_socket()
 {
     unsigned char *buf = (unsigned char *)malloc(6);
+    handler->receive_from_socket(buf, 5);
+    handler->_stack = M2MInterface::LwIP_IPv4;
+    handler->receive_from_socket(buf, 5);
+    handler->_stack = M2MInterface::LwIP_IPv6;
     handler->receive_from_socket(buf, 5);
     free(buf);
 }

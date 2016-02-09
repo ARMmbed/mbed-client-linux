@@ -17,6 +17,7 @@
 
 uint8_t m2mbase_stub::uint8_value;
 uint16_t m2mbase_stub::uint16_value;
+uint32_t m2mbase_stub::uint32_value;
 uint16_t m2mbase_stub::int_value;
 int32_t m2mbase_stub::name_id_value;
 
@@ -38,6 +39,7 @@ void m2mbase_stub::clear()
     int_value = 0;
     uint8_value = 0;
     uint16_value = 0;
+    uint32_value = 0;
     string_value = NULL;
     name_id_value = -1;
     mode_value = M2MBase::Static;
@@ -97,6 +99,10 @@ void M2MBase::set_observation_number(const uint16_t /*observation_number*/)
 {
 }
 
+void M2MBase::set_max_age(const uint32_t /*max_age*/)
+{
+}
+
 M2MBase::Operation M2MBase::operation() const
 {
     return m2mbase_stub::operation;
@@ -130,6 +136,11 @@ const String& M2MBase::resource_type() const
 uint8_t M2MBase::coap_content_type() const
 {
     return m2mbase_stub::uint8_value;
+}
+
+uint32_t M2MBase::max_age() const
+{
+    return m2mbase_stub::uint32_value;
 }
 
 void M2MBase::set_observable(bool /*observable*/)
@@ -201,7 +212,7 @@ bool M2MBase::handle_observation_attribute(char *&query)
     return m2mbase_stub::bool_value;
 }
 
-void M2MBase::observation_to_be_sent(uint16_t obj_instance_id)
+void M2MBase::observation_to_be_sent(m2m::Vector<uint16_t>, bool)
 {
 }
 
@@ -255,4 +266,13 @@ void M2MBase::set_register_uri( bool register_uri)
 bool M2MBase::register_uri()
 {
     return m2mbase_stub::bool_value;
+}
+
+void M2MBase::set_uri_path(const String &uri_path)
+{
+}
+
+const String& M2MBase::uri_path() const
+{
+    return *m2mbase_stub::string_value;
 }

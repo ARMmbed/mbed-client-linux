@@ -289,9 +289,7 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     handler->_receive_data = true;
     m2mconnectionsecurityimpl_stub::use_inc_int = true;
     m2mconnectionsecurityimpl_stub::inc_int_value = 0;
-    observer->error = false;
     handler->data_receive(obj);
-    CHECK(observer->error == true);
     CHECK(handler->_receive_data == false);
     CHECK(observer->dataAvailable == true);
 

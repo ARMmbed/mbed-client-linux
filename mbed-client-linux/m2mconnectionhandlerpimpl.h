@@ -122,7 +122,8 @@ public:
 
 private:
 
-    void bind_socket();
+    void bind_ipv4_socket();
+    void bind_ipv6_socket();
 
 private:
     M2MConnectionHandler                    *_base;
@@ -131,15 +132,18 @@ private:
     bool                                    _use_secure_connection;
     String                                  _server_address;
     char                                    _receive_buffer[BUFFER_LENGTH];
-    uint8_t                                 _resolved_address[16];
+    uint8_t                                 _resolved_address[INET6_ADDRSTRLEN];
     M2MInterface::BindingMode               _binding_mode;
     M2MInterface::NetworkStack              _stack;
-    uint8_t                                 _received_address[16];
+    uint8_t                                 _received_address[INET6_ADDRSTRLEN];
     M2MConnectionObserver::SocketAddress    *_received_packet_address;
     int                                     _socket_server;
     struct sockaddr_in                      _sa_dst;
     struct sockaddr_in                      _sa_src;
+    struct sockaddr_in6                     _sa_dst6;
+    struct sockaddr_in6                     _sa_src6;
     int                                     _slen_sa_dst;
+    int                                     _slen_sa_dst6;
     uint8_t                                 _received_buffer[BUFFER_LENGTH];
     pthread_t                               _listen_thread; /* Thread for Listen data function */
     volatile bool                           _receive_data;

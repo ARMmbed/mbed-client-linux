@@ -46,6 +46,7 @@ bool ThreadHelper::cancel()
 {
     bool success = true;
     if(_thread_id != 0) {
+        pthread_detach(_thread_id);
         int rc = pthread_cancel(_thread_id);
         _thread_id = 0;
         if (rc != 0) {

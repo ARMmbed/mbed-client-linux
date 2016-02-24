@@ -66,7 +66,6 @@ void M2MTimerPimpl::stop_timer()
 {
     _interval = 0;
     _single_shot = true;
-    usleep(1000);
     cancel();
 }
 

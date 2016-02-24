@@ -62,6 +62,7 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
             pthread_detach(_listen_thread);
         }
     }
+
     if(_socket_server > 0) {        
         shutdown(_socket_server,SHUT_RDWR);
         _socket_server = -1;
@@ -167,7 +168,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 memcpy(&_sa_dst6.sin6_addr,
                        _received_packet_address->_address,
                        _received_packet_address->_length);
-                connect((uint)_socket_server, (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6);
+                connect(_socket_server, (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6);
             }
             break;
         }

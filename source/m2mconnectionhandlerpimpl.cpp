@@ -129,7 +129,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 _sa_dst.sin_family = AF_INET;
                 _sa_dst.sin_port = ntohs(server_port);
                 memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
-                connect((uint)_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
+                connect(_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
             }
             break;
         case AF_INET6:

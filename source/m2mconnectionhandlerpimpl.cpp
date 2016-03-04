@@ -105,8 +105,6 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
             if(a) {
                 inet_ntop(AF_INET,&(a->sin_addr),ip_address,INET_ADDRSTRLEN);
                 if(_socket_server == -1) {
-                   _socket_server=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-
                     if(_binding_mode == M2MInterface::TCP ||
                        _binding_mode == M2MInterface::TCP_QUEUE ){
                         _socket_server=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

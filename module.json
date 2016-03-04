@@ -6,9 +6,6 @@
   "author": "Yogesh Pande <yogesh.pande@arm.com>",
   "homepage": "https://github.com/ARMmbed/mbed-client-linux",
   "license": "Apache-2.0",
-  "extraIncludes": [
-    "mbed-client-libservice"
-  ],
   "dependencies": {},
   "targetDependencies": {}
 }

@@ -23,7 +23,9 @@ ThreadHelper::ThreadHelper()
 
 ThreadHelper::~ThreadHelper()
 {
-    pthread_cancel(_thread_id);
+    if(_thread_id != 0) {
+        pthread_cancel(_thread_id);
+    }
 }
 
 bool ThreadHelper::start()

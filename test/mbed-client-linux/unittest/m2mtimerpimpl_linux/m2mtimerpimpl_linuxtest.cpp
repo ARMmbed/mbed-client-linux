@@ -51,11 +51,6 @@ TEST(M2MTimerPimpl_linux, timer_expired)
     m2m_timer->test_timer_expired();
 }
 
-TEST(M2MTimerPimpl_linux, test_run)
-{
-    m2m_timer->test_run();
-}
-
 TEST(M2MTimerPimpl_linux, test_start_dtls_timer)
 {
     m2m_timer->test_start_dtls_timer();

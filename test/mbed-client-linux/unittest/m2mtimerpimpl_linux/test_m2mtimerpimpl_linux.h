@@ -33,8 +33,6 @@ public:
 
     void test_timer_expired();
 
-    void test_run();
-
     void test_start_dtls_timer();
 
     void test_is_intermediate_interval_passed();

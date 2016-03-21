@@ -18,18 +18,17 @@
 #define M2M_TIMER_PIMPL_H__
 
 #include <stdint.h>
-#include "threadhelper.h"
+#include <signal.h>
+#include <time.h>
+#include <pthread.h>
+#include <stdint.h>
+#include <string.h>
 
 #include "mbed-client/m2mtimerobserver.h"
 
-class M2MTimerPimpl : public ThreadHelper {
-private:
-    // Prevents the use of assignment operator
-    M2MTimerPimpl& operator=(const M2MTimerPimpl& other);
+class M2MTimerPimpl {
 
-    // Prevents the use of copy constructor
-    M2MTimerPimpl(const M2MTimerPimpl& other);
-
+public:
     /**
     * Constructor.
     */
@@ -41,11 +40,18 @@ private:
     virtual ~M2MTimerPimpl();
 
     /**
+    * Callback function for timer completion.
+    */
+    void timer_expired();
+
+private:
+
+    /**
      * Starts timer
      * @param interval Timer's interval in milliseconds
-    * @param single_shot defines if timer is ticked
-    * once or is it restarted everytime timer is expired.
-    */
+     * @param single_shot defines if timer is ticked
+     * once or is it restarted everytime timer is expired.
+     */
     void start_timer(uint64_t interval, M2MTimerObserver::Type type, bool single_shot = true);
 
     /**
@@ -57,15 +63,10 @@ private:
     void start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type);
 
     /**
-    * Stops timer.
-    * This cancels the ongoing timer.
-    */
+     * Stops timer.
+     * This cancels the ongoing timer.
+     */
     void stop_timer();
-
-    /**
-    * Callback function for timer completion.
-    */
-    void timer_expired();
 
     /**
      * @brief Checks if the intermediate interval has passed
@@ -79,21 +80,23 @@ private:
      */
     bool is_total_interval_passed();
 
-
-protected : // From ThreadHelper
-
-    virtual void run();
+    /**
+     * @brief Start the timer
+     */
+    void start();
 
 private:
-    M2MTimerObserver&   _observer;
-    bool                _single_shot;
-    uint64_t            _interval;
+    M2MTimerObserver&       _observer;
+    bool                    _single_shot;
+    uint64_t                _interval;
     M2MTimerObserver::Type  _type;
-
-    uint64_t            _intermediate_interval;
-    uint64_t            _total_interval;
-    uint8_t             _status;
-    bool                _dtls_type;
+    uint64_t                _intermediate_interval;
+    uint64_t                _total_interval;
+    timer_t                 _timer_id;    
+    struct sigevent         _signal_event;
+    struct sigaction        _signal_action;
+    struct itimerspec       _timer_specs;
+    bool                    _total_interval_expired;
 
     friend class M2MTimer;
     friend class Test_M2MTimerPimpl_linux;

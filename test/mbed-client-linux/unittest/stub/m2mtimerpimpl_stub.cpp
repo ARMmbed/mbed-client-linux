@@ -54,9 +54,7 @@ void M2MTimerPimpl::timer_expired()
 {
 }
 
-void M2MTimerPimpl::run()
-{
-}
+
 
 bool M2MTimerPimpl::is_intermediate_interval_passed()
 {

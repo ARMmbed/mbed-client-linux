@@ -19,7 +19,7 @@
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2msecurity.h"
-#include "mbed-trace/mbed_trace.h"
+
 
 M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base, M2MConnectionObserver &observer,
                                                      M2MConnectionSecurity *sec,
@@ -99,7 +99,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
         /* Take the first address and give it to NSDL and EDTLS*/
         switch(addr_info->ai_family) {
         case AF_INET:
-            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv4\n");
+            //tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv4\n");
             char ip_address[INET_ADDRSTRLEN];            
             a = (struct sockaddr_in*)addr_info->ai_addr;
             if(a) {
@@ -131,7 +131,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
             }
             break;
         case AF_INET6:
-            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv6\n");
+           // tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address is IPv6\n");
             char ip6_address[INET6_ADDRSTRLEN];            
             a6 =  (struct sockaddr_in6*)addr_info->ai_addr;
             if(a6) {

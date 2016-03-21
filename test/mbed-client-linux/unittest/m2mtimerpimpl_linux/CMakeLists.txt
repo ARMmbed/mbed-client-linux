@@ -7,7 +7,6 @@ add_executable(m2mtimerpimpl_linux
         "test_m2mtimerpimpl_linux.cpp"
         "../stub/common_stub.cpp"
         "../stub/m2mstring_stub.cpp"
-        "../stub/threadhelper_stub.cpp"
 )
 
 target_link_libraries(m2mtimerpimpl_linux

@@ -20,6 +20,8 @@
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2msecurity.h"
 #include "mbed-trace/mbed_trace.h"
+#include <cerrno>
+#include <cstring>
 
 #define TRACE_GROUP "mClt"
 
@@ -92,9 +94,11 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     bool success = false;
     const char* address = server_address.c_str();
     struct addrinfo *addr_info = NULL;
-    int r;
+    int r = -1;
     struct sockaddr_in *a = NULL;
     struct sockaddr_in6 *a6 = NULL;
+    int8_t err_connect = -1;
+
     /* Resolve hostname of NSP */
     r = getaddrinfo(address, NULL, NULL, &addr_info);
     if (r == 0 && addr_info) {
@@ -125,11 +129,13 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                     _received_packet_address->_stack = M2MInterface::LwIP_IPv4;
                     _stack = M2MInterface::LwIP_IPv4;
                     _received_packet_address->_length = 4;
+
+                    _sa_dst.sin_family = AF_INET;
+                    _sa_dst.sin_port = ntohs(server_port);
+                    memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
+
+                    err_connect = connect(_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
                 }
-                _sa_dst.sin_family = AF_INET;
-                _sa_dst.sin_port = ntohs(server_port);
-                memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
-                connect(_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
             }
             break;
         case AF_INET6:
@@ -162,15 +168,21 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                     _received_packet_address->_stack = M2MInterface::LwIP_IPv6;
                     _stack = M2MInterface::LwIP_IPv6;
                     _received_packet_address->_length = sizeof(_resolved_address);
+
+                    _sa_dst6.sin6_family = AF_INET6;
+                    _sa_dst6.sin6_port = ntohs(server_port);
+                    memcpy(&_sa_dst6.sin6_addr,
+                           _received_packet_address->_address,
+                           _received_packet_address->_length);
+
+                err_connect = connect(_socket_server, (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6);
                 }
-                _sa_dst6.sin6_family = AF_INET6;
-                _sa_dst6.sin6_port = ntohs(server_port);
-                memcpy(&_sa_dst6.sin6_addr,
-                       _received_packet_address->_address,
-                       _received_packet_address->_length);
-                connect(_socket_server, (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6);
             }
             break;
+        }
+        if (-1 == err_connect) {
+            tr_error("M2MConnectionHandlerPimpl::resolve_server_address - connect failed with %s.\n", strerror(errno));
+            success = false;
         }
 
         freeaddrinfo(addr_info);
@@ -185,6 +197,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                     _use_secure_connection = true;
                 }
             }else{
+                tr_error("M2MConnectionHandlerPimpl::resolve_server_address - security initialization failed.\n");
                 success = false;
             }
         }
@@ -195,6 +208,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     }
     else {
         //TODO: Define memory fail error code
+        tr_error("M2MConnectionHandlerPimpl::resolve_server_address - getaddrinfo failed with %s.\n", strerror(errno));
         _observer.socket_error(3);
     }
     return success;

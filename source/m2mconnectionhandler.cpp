@@ -42,7 +42,7 @@ bool M2MConnectionHandler::bind_connection(const uint16_t listen_port)
     return _private_impl->bind_connection(listen_port);
 }
 
-bool M2MConnectionHandler::resolve_server_address(const String& server_address,
+M2MInterface::Error M2MConnectionHandler::resolve_server_address(const String& server_address,
                                                   const uint16_t server_port,
                                                   M2MConnectionObserver::ServerType server_type,
                                                   const M2MSecurity* security)

@@ -117,13 +117,15 @@ public:
     void handle_connection_error(int error);
 
 public:
-    void data_receive(void *object);
 
+    void data_receive(void *object);
 
 private:
 
     int bind_socket();
+
     bool resolve_hostname(const char* address, const uint16_t server_port);
+
     void create_socket();
 
 private:

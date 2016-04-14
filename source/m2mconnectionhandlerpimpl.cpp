@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
+#include "mbed-client/m2mconnectionhandler.h"
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2msecurity.h"
 #include "mbed-trace/mbed_trace.h"
@@ -83,13 +84,13 @@ bool M2MConnectionHandlerPimpl::bind_connection(const uint16_t listen_port)
     return success;
 }
 
-M2MInterface::Error M2MConnectionHandlerPimpl::resolve_server_address(const String& server_address,
+bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_address,
                                                   const uint16_t server_port,
                                                   M2MConnectionObserver::ServerType server_type,
                                                   const M2MSecurity* security)
 {
     tr_debug("M2MConnectionHandlerPimpl::resolve_server_address");
-    M2MInterface::Error error = M2MInterface::ErrorNone;
+    M2MConnectionHandler::ConnectionError error = M2MConnectionHandler::ERROR_NONE;
 
     /* Resolve hostname of NSP */
     if (resolve_hostname(server_address.c_str(), server_port)) {
@@ -102,24 +103,32 @@ M2MInterface::Error M2MConnectionHandlerPimpl::resolve_server_address(const Stri
                     if (_security_impl->connect(_base) == 0) {
                         _use_secure_connection = true;
                     } else {
-                        error = M2MInterface::HandshakeFailed;
+                        tr_error("M2MConnectionHandlerPimpl::resolve_server_address - hanshake failed");
+                        error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
                     }
                 } else {
-                    error = M2MInterface::SslInitFailed;
+                    tr_error("M2MConnectionHandlerPimpl::resolve_server_address - init failed");
+                    error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
                 }
             } else {
-                error = M2MInterface::MemoryFail;
+                tr_error("M2MConnectionHandlerPimpl::resolve_server_address - sec is null");
+                error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
             }
-        }        
-        if (M2MInterface::ErrorNone == error) {
-            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - address ready");
-            _observer.address_ready(*_received_packet_address,server_type, server_port);
         }
     }
     else {
-        error = M2MInterface::DNSResolvingFailed;
+        tr_error("M2MConnectionHandlerPimpl::resolve_server_address - DNS resolving fails");
+        error = M2MConnectionHandler::DNS_RESOLVING_ERROR;
     }
-    return error;
+
+    if (error != M2MConnectionHandler::ERROR_NONE) {
+        _observer.socket_error(error);
+        return false;
+    }
+    else {
+        _observer.address_ready(*_received_packet_address,server_type, server_port);
+        return true;
+    }
 }
 
 bool M2MConnectionHandlerPimpl::start_listening_for_data()
@@ -198,10 +207,10 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
                     }                    
                     _observer.data_available(_received_buffer, rcv_size, *_received_packet_address);
                 }
-                // EOF received or some other negative error code
-                else{                    
+                // EOF received or some negative error code
+                else{
                     tr_error("M2MConnectionHandlerPimpl::data_receive - secure error: %s", strerror(errno));
-                    _observer.socket_error(M2MInterface::SocketReadError);
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR);
                     _receive_data = false;
                 }
                 memset(_received_buffer, 0, BUFFER_LENGTH);
@@ -258,7 +267,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
 
                 if (rcv_size == -1) {
                     tr_error("M2MConnectionHandlerPimpl::data_receive - error: %s", strerror(errno));
-                    _observer.socket_error(M2MInterface::SocketReadError);
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR);
                     _receive_data = false;
                 }
 
@@ -275,7 +284,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
                             _observer.data_available(buf, len, *_received_packet_address);
                             free(buf);
                         }else{
-                            _observer.socket_error(M2MInterface::SocketReadError);
+                            _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR);
                             _receive_data = false;
                         }
                     }else{
@@ -301,7 +310,7 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                 _observer.data_sent();
             }else{
                 tr_error("M2MConnectionHandlerPimpl::send_data - secure error: %s", strerror(errno));
-                _observer.socket_error(M2MInterface::SocketSendError);
+                _observer.socket_error(M2MConnectionHandler::SOCKET_SEND_ERROR);
             }
         }else{
             if(address) {
@@ -347,14 +356,15 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                 if (ret == -1) {
                     tr_error("M2MConnectionHandlerPimpl::send_data - error: %s", strerror(errno));
                     _receive_data = false;
-                    _observer.socket_error(M2MInterface::SocketSendError);
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_SEND_ERROR);
                 } else {
                      success = true;
                     _observer.data_sent();
                 }
             } else {
-                tr_error("M2MConnectionHandlerPimpl::send_data - error: MemoryFail");
-                _observer.socket_error(M2MInterface::MemoryFail);
+                tr_error("M2MConnectionHandlerPimpl::send_data - addr is null");
+                _observer.socket_error(M2MConnectionHandler::SOCKET_SEND_ERROR);
+                _receive_data = false;
             }
         }
     }

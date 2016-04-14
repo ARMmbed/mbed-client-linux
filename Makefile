@@ -27,7 +27,7 @@ endif
 #
 # Define compiler toolchain
 #
-include ../../libService/toolchain_rules.mk
+include toolchain_rules.mk
 
 $(eval $(call generate_rules,$(LIB),$(SRCS)))
 

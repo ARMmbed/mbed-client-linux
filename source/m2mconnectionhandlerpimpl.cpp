@@ -149,6 +149,7 @@ int M2MConnectionHandlerPimpl::send_to_socket(const unsigned char *buf, size_t l
                       (const struct sockaddr *)&_sa_dst, _slen_sa_dst);
     }
     else if(_stack == M2MInterface::LwIP_IPv6) {
+        _sa_dst6.sin6_scope_id = 0;
         return sendto(_socket_server, (char*)buf, len, 0,
                       (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6);
     }
@@ -322,8 +323,8 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                         break;
                     case M2MInterface::LwIP_IPv6:
                         _sa_dst6.sin6_family = AF_INET6;
-                                       _sa_dst6.sin6_port = htons(address->port);
-                                       memcpy(&_sa_dst6.sin6_addr, address->addr_ptr, address->addr_len);
+                        _sa_dst6.sin6_port = htons(address->port);
+                        memcpy(&_sa_dst6.sin6_addr, address->addr_ptr, address->addr_len);
                         break;
                     default:
                         break;
@@ -456,6 +457,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
                             memcpy(&_sa_dst6.sin6_addr,
                                    _received_packet_address->_address,
                                    _received_packet_address->_length);
+                            _sa_dst6.sin6_scope_id = 0;
                             if (connect(_socket_server, (const struct sockaddr *)&_sa_dst6, _slen_sa_dst6) != 0) {
                                 success = false;
                                 tr_error("M2MConnectionHandlerPimpl::resolve_hostname - failed to connect %s\n", ip_address);

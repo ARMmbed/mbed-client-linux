@@ -16,6 +16,8 @@
 #include "common_stub.h"
 #include "sn_grs.h"
 #include <sys/socket.h>
+#include <arpa/inet.h>
+
 
 socket_error_t common_stub::error;
 socket_event_t * common_stub::event;
@@ -409,8 +411,6 @@ int getaddrinfo (const char *__restrict,
             const struct addrinfo *__restrict,
             struct addrinfo **__restrict addr)
 {
-    //*addr = (addrinfo*)malloc(sizeof(addrinfo));
-    //(*addr)->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
     *addr = common_stub::addrinfo;
     return common_stub::int_value;
 }
@@ -422,21 +422,25 @@ __THROW
 //    free(addr);
 }
 
-const char *inet_ntop (int, const void *__restrict,
-                  char *__restrict, socklen_t)
-     __THROW
+const char *inet_ntop (int, const void *, char *, socklen_t)
+__THROW
 {
     return common_stub::char_value;
 }
 
 int connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 {
-    return common_stub::int_value;
+    return common_stub::int2_value;
 }
 
 int setsockopt (int __fd, int __level, int __optname,
                const void *__optval, socklen_t __optlen)
     __THROW
+{
+    return common_stub::int_value;
+}
+int inet_pton (int __af, const char *__restrict __cp,
+      void *__restrict __buf) __THROW
 {
     return common_stub::int_value;
 }

@@ -9,6 +9,21 @@ TESTDIRS := $(UNITTESTS:%=build-%)
 CLEANTESTDIRS := $(UNITTESTS:%=clean-%)
 COVERAGEFILE := ./lcov/coverage.info
 
+LIB = libmbed-client-linux.a
+
+include sources.mk
+include include_dirs.mk
+
+SERVLIB_DIR := ../../libService
+MBEDTRACE_DIR := ../../mbed-trace
+override CFLAGS += -I$(SERVLIB_DIR)/libService
+override CFLAGS += -I$(MBEDTRACE_DIR)/mbed-trace
+override CFLAGS += $(addprefix -I,$(INCLUDE_DIRS))
+override CFLAGS += $(addprefix -D,$(FLAGS))
+ifeq ($(DEBUG),1)
+override CFLAGS += -DHAVE_DEBUG
+endif
+
 #
 # Define compiler toolchain
 #

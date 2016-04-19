@@ -22,8 +22,9 @@
 #include "mbed-client/m2msecurity.h"
 #include "mbed-trace/mbed_trace.h"
 
-M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
-                                                     M2MConnectionObserver &observer,
+#define TRACE_GROUP "mClt"
+
+M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base, M2MConnectionObserver &observer,
                                                      M2MConnectionSecurity *sec,
                                                      M2MInterface::BindingMode mode,
                                                      M2MInterface::NetworkStack stack)

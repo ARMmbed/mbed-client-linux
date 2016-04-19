@@ -116,15 +116,17 @@ bool M2MTimerPimpl::is_total_interval_passed()
 bool M2MTimerPimpl::is_intermediate_interval_passed()
 {
     itimerspec timer_spec;
-    timer_gettime(_timer_id, &timer_spec);
-    timer_settime(_timer_id, 0, &timer_spec, NULL);
+    if (_timer_id != 0 ) {
+        timer_gettime(_timer_id, &timer_spec);
+        timer_settime(_timer_id, 0, &timer_spec, NULL);
 
-    uint64_t trigger = _total_interval - _intermediate_interval;
-    uint64_t remaining = (timer_spec.it_value.tv_sec  * 1000) +
-            (timer_spec.it_value.tv_nsec / 1000000);
+        uint64_t trigger = _total_interval - _intermediate_interval;
+        uint64_t remaining = (timer_spec.it_value.tv_sec  * 1000) +
+                (timer_spec.it_value.tv_nsec / 1000000);
 
-    if (remaining <= trigger) {
-        return true;
+        if (remaining <= trigger) {
+            return true;
+        }
     }
     return false;
 }

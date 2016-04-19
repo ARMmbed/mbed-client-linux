@@ -66,7 +66,7 @@ public:
     * @param String server address.
     * @param uint16_t Server port.
     * @param ServerType, Server Type to be resolved.
-    * @return true if address is valid else false.
+    * @return True if address is valid, else false.
     */
     bool resolve_server_address(const String& server_address,
                                 const uint16_t server_port,
@@ -117,13 +117,16 @@ public:
     void handle_connection_error(int error);
 
 public:
-    void data_receive(void *object);
 
+    void data_receive(void *object);
 
 private:
 
-    void bind_ipv4_socket();
-    void bind_ipv6_socket();
+    int bind_socket();
+
+    bool resolve_hostname(const char* address, const uint16_t server_port);
+
+    void create_socket();
 
 private:
     M2MConnectionHandler                    *_base;

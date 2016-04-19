@@ -81,3 +81,4 @@ TEST(M2MConnectionHandlerPimpl_linux, test_handle_connection_error)
 {
     handler->test_handle_connection_error();
 }
+

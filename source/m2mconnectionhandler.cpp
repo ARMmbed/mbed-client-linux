@@ -79,7 +79,7 @@ void M2MConnectionHandler::stop_listening()
     _private_impl->stop_listening();
 }
 
-void M2MConnectionHandler::handle_connection_error(int /*error*/)
+void M2MConnectionHandler::handle_connection_error(int error)
 {
-    _private_impl->handle_connection_error(4);
+    _private_impl->handle_connection_error(error);
 }

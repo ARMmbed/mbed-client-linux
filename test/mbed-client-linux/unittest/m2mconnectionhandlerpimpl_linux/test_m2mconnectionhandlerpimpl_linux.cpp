@@ -25,7 +25,12 @@ class M2MConnection_TestObserver : public M2MConnectionObserver {
 
 public:
     M2MConnection_TestObserver():
-    obj(NULL){}
+    obj(NULL),
+    dataAvailable(false),
+    error(false),
+    addressReady(false),
+    dataSent(false)
+    {}
 
     virtual ~M2MConnection_TestObserver(){}
 
@@ -37,7 +42,6 @@ public:
         if(obj) {
             obj->_receive_data = false;
         }
-
     }
 
     void socket_error(uint8_t error_code){error = true;}
@@ -82,63 +86,223 @@ void Test_M2MConnectionHandlerPimpl_linux::test_bind_connection()
 
 void Test_M2MConnectionHandlerPimpl_linux::test_resolve_server_address()
 {
-    common_stub::error = SOCKET_ERROR_NONE;
-    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
-    common_stub::addrinfo->ai_family = AF_INET;
-    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
     M2MSecurity* sec = new M2MSecurity(M2MSecurity::M2MServer);
-
+    common_stub::char_value = NULL;
+    /* Stack uninitialized, socket_server will be -1, DnsResolvingFailed */
+    common_stub::error = SOCKET_ERROR_NONE;
     M2MConnectionHandlerPimpl* tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::Uninitialized);
     CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
-    free(common_stub::addrinfo->ai_addr);
-    free(common_stub::addrinfo);
-    common_stub::addrinfo = NULL;
+    CHECK(observer->error == true);
     delete tcp_handler;
 
+    /* Socket bind() return -1, DnsResolvingFailed */
+    observer->error = false;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::int_value = -1;
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
+    common_stub::int_value = 0;
+    delete tcp_handler;
+    tcp_handler = NULL;
+
+    /* Socket bind() ipv6 return -1, DnsResolvingFailed */
+    observer->error = false;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::int_value = -1;
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::LwIP_IPv6);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
+    common_stub::int_value = 0;
+    delete tcp_handler;
+    tcp_handler = NULL;
+
+    /* Socket bind() stack uninitialized return -1, DnsResolvingFailed */
+    observer->error = false;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::int_value = -1;
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::Uninitialized);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
+    common_stub::int_value = 0;
+    delete tcp_handler;
+    tcp_handler = NULL;
+
+    /* Security implementation missing, SSL_CONNECTION_ERROR */
+    observer->error = false;
     common_stub::error = SOCKET_ERROR_NONE;
     common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
     common_stub::addrinfo->ai_family = AF_INET;
     common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
-    CHECK(handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
     free(common_stub::addrinfo->ai_addr);
     free(common_stub::addrinfo);
     common_stub::addrinfo = NULL;
+    delete tcp_handler;
+    tcp_handler = NULL;
 
+    /* _security_impl->init(security) return -1, SSL_CONNECTION_ERROR */
+    observer->error = false;
+    M2MConnectionSecurity* conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
+    m2mconnectionsecurityimpl_stub::int_value = -1;
     common_stub::error = SOCKET_ERROR_NONE;
     common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
-    common_stub::addrinfo->ai_family = AF_INET6;
+    common_stub::addrinfo->ai_family = AF_INET;
     common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
-    handler->_socket_server = -1;
-    CHECK(handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
     free(common_stub::addrinfo->ai_addr);
     free(common_stub::addrinfo);
-
-    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, NULL , M2MInterface::TCP, M2MInterface::Uninitialized);
-    common_stub::error = SOCKET_ERROR_NONE;
-    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
-    common_stub::addrinfo->ai_family = AF_INET6;
-    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
-    tcp_handler->_socket_server = -1;
-    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    common_stub::addrinfo = NULL;
     delete tcp_handler;
 
-    M2MConnectionSecurity* conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
-    handler->_security_impl = conSec;
-    m2mconnectionsecurityimpl_stub::int_value = 0;
-
-    CHECK(handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
-    handler->_security_impl = NULL;
-    delete conSec;
-
+    /* _security_impl->connect(_base) return -1, SSL_CONNECTION_ERROR */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = true;
+    m2mconnectionsecurityimpl_stub::inc_int_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
     free(common_stub::addrinfo->ai_addr);
     free(common_stub::addrinfo);
     common_stub::addrinfo = NULL;
+    delete tcp_handler;
 
-    free(handler->_received_packet_address);
-    handler->_received_packet_address = NULL;
-//    CHECK(handler->_receive_data == true);
-    CHECK(handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    /* TCP RESOLVED */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::int2_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
+    CHECK(observer->error == false);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
 
+    /* TCP QUEUE RESOLVED */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::TLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::int2_value = 0;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::TCP_QUEUE, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
+    CHECK(observer->error == false);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
+
+
+    /* UDP ipv4 success */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::DTLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::int2_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::UDP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
+    CHECK(observer->error == false);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
+
+    /* UDP ipv4 connect() return -1 */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::DTLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::int2_value = -1;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    common_stub::addrinfo->ai_next = NULL;
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::UDP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
+
+    /* UDP ipv6 success */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::DTLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::int2_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET6;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::UDP, M2MInterface::LwIP_IPv6);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
+    CHECK(observer->error == false);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
+
+    /* UDP ipv6 connect() fail */
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::DTLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    common_stub::int2_value = -1;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET6;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    common_stub::addrinfo->ai_next = NULL;
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::UDP, M2MInterface::LwIP_IPv6);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == false);
+    CHECK(observer->error == true);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
+
+    /* TCP ipv6 success*/
+    conSec = new M2MConnectionSecurity(M2MConnectionSecurity::DTLS);
+    observer->error = false;
+    m2mconnectionsecurityimpl_stub::use_inc_int = false;
+    m2mconnectionsecurityimpl_stub::int_value = 0;
+    common_stub::int2_value = 0;
+    common_stub::error = SOCKET_ERROR_NONE;
+    common_stub::addrinfo = (addrinfo*)malloc(sizeof(addrinfo));
+    common_stub::addrinfo->ai_family = AF_INET;
+    common_stub::addrinfo->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
+    tcp_handler = new M2MConnectionHandlerPimpl(NULL, *observer, conSec , M2MInterface::TCP, M2MInterface::LwIP_IPv4);
+    CHECK(tcp_handler->resolve_server_address("10", 7, M2MConnectionObserver::LWM2MServer, sec) == true);
+    CHECK(observer->error == false);
+    free(common_stub::addrinfo->ai_addr);
+    free(common_stub::addrinfo);
+    common_stub::addrinfo = NULL;
+    delete tcp_handler;
     delete sec;
 }
 
@@ -273,6 +437,13 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     m2mconnectionsecurityimpl_stub::inc_int_value = 0;
     handler->data_receive(obj);
     CHECK(handler->_receive_data == false);
+
+    observer->dataAvailable = false;
+    handler->_receive_data = true;
+    m2mconnectionsecurityimpl_stub::use_inc_int = true;
+    m2mconnectionsecurityimpl_stub::inc_int_value = 10;
+    handler->data_receive(obj);
+    CHECK(handler->_receive_data == false);
     CHECK(observer->dataAvailable == true);
 
     handler->_stack = M2MInterface::LwIP_IPv6;
@@ -280,6 +451,15 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     handler->_receive_data = true;
     m2mconnectionsecurityimpl_stub::use_inc_int = true;
     m2mconnectionsecurityimpl_stub::inc_int_value = 0;
+    handler->data_receive(obj);
+    CHECK(handler->_receive_data == false);
+    CHECK(observer->dataAvailable == false);
+
+    handler->_stack = M2MInterface::LwIP_IPv6;
+    observer->dataAvailable = false;
+    handler->_receive_data = true;
+    m2mconnectionsecurityimpl_stub::use_inc_int = true;
+    m2mconnectionsecurityimpl_stub::inc_int_value = 10;
     handler->data_receive(obj);
     CHECK(handler->_receive_data == false);
     CHECK(observer->dataAvailable == true);
@@ -291,7 +471,7 @@ void Test_M2MConnectionHandlerPimpl_linux::test_data_receive()
     m2mconnectionsecurityimpl_stub::inc_int_value = 0;
     handler->data_receive(obj);
     CHECK(handler->_receive_data == false);
-    CHECK(observer->dataAvailable == true);
+    //CHECK(observer->dataAvailable == true);
 
     handler->_security_impl = NULL;
     delete conSec;

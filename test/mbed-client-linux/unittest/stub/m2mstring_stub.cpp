@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "m2mstring.h"
+#include "mbed-client/m2mstring.h"
 #include <string.h> // strlen
 #include <stdlib.h> // malloc, realloc
 #include <assert.h>
@@ -234,6 +234,26 @@ String& String::append( const char* str, size_type n) {
         size_ = newlen;
     }
     return *this;
+}
+
+String& String::append_raw( const char* str, size_type n) {
+    if (str && n > 0) {
+        size_t newlen = size_ + n;
+        this->reserve( newlen );
+        memmove(p+size_, str, n); // p and s.p MAY overlap
+        p[newlen] = 0; // add NUL termination
+        size_ = newlen;
+    }
+    return *this;
+}
+
+void String::append_int(int param) {
+
+    // max len of "-9223372036854775808" plus zero termination
+    char conv_buff[20+1];
+
+    int len = itoa_c(param, conv_buff);
+    append_raw(conv_buff, len);
 }
 
 int String::compare( size_type pos, size_type len, const String& str ) const {

@@ -403,8 +403,17 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
     }
 
     create_socket();
-    if (_socket_server != -1 && bind_socket() != -1) {
+    if (_socket_server != -1) {
         success = true;
+    }
+    // If listen port is something else than default then use it otherwise randomize
+    if (_listen_port != 5683 && success) {
+        success = false;
+        if (bind_socket() != -1) {
+            success = true;
+        } else {
+            tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - binding fails, %s", strerror(errno));
+        }
     }
 
     if (success && _received_packet_address) {

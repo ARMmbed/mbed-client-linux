@@ -128,6 +128,8 @@ private:
 
     void create_socket();
 
+    bool is_tcp_connection();
+
 private:
     M2MConnectionHandler                    *_base;
     M2MConnectionObserver                   &_observer;

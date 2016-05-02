@@ -92,9 +92,8 @@ private:
     M2MTimerObserver::Type  _type;
     uint64_t                _intermediate_interval;
     uint64_t                _total_interval;
-    timer_t                 _timer_id;    
+    timer_t                 _timer_id;
     struct sigevent         _signal_event;
-    struct sigaction        _signal_action;
     struct itimerspec       _timer_specs;
     bool                    _total_interval_expired;
 

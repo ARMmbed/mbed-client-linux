@@ -21,7 +21,7 @@
 #include "mbed-client-linux/m2mtimerpimpl.h"
 #include "mbed-client/m2mtimerobserver.h"
 
-static void alarmFunction(int sigNumb, siginfo_t *si, void *uc);
+static void expired(union sigval sigval);
 
 M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
 : _observer(observer),
@@ -94,17 +94,12 @@ void M2MTimerPimpl::start()
         _timer_specs.it_interval.tv_nsec = (_interval % 1000) * 1000000;
     }
 
-    sigemptyset(&_signal_action.sa_mask);
-    _signal_action.sa_flags = SA_SIGINFO;
-    _signal_action.sa_sigaction = alarmFunction;
-
     memset(&_signal_event, 0, sizeof(_signal_event));
-    _signal_event.sigev_notify = SIGEV_SIGNAL;
+    _signal_event.sigev_notify = SIGEV_THREAD;
     _signal_event.sigev_value.sival_ptr = (void*) this;
-    _signal_event.sigev_signo = SIGALRM;
+    _signal_event.sigev_notify_function = expired;
 
     timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
-    sigaction(SIGALRM, &_signal_action, NULL);
     timer_settime(_timer_id, 0, &_timer_specs, NULL);
 }
 
@@ -131,8 +126,9 @@ bool M2MTimerPimpl::is_intermediate_interval_passed()
     return false;
 }
 
-void alarmFunction(int /*signumb*/, siginfo_t *si, void */*uc*/) {
-    M2MTimerPimpl * timer = reinterpret_cast<M2MTimerPimpl *> (si->si_value.sival_ptr);
+void expired(union sigval sigval)
+{
+    M2MTimerPimpl * timer = reinterpret_cast<M2MTimerPimpl *> (sigval.sival_ptr);
     if (timer) {
         timer->timer_expired();
     }

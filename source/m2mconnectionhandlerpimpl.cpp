@@ -89,7 +89,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
 {
     tr_debug("M2MConnectionHandlerPimpl::resolve_server_address");
     M2MConnectionHandler::ConnectionError error = M2MConnectionHandler::ERROR_NONE;
-
+    bool retry = true;
     /* Resolve hostname of NSP */
     if (resolve_hostname(server_address.c_str(), server_port)) {
         if( security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Certificate ||
@@ -122,10 +122,12 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                 } else {
                     tr_error("M2MConnectionHandlerPimpl::resolve_server_address - init failed");
                     error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
+                    retry = false;
                 }
             } else {
                 tr_error("M2MConnectionHandlerPimpl::resolve_server_address - sec is null");
                 error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
+                retry = false;
             }
         }
     }
@@ -135,7 +137,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     }
 
     if (error != M2MConnectionHandler::ERROR_NONE) {
-        _observer.socket_error(error);
+        _observer.socket_error(error, retry);
         return false;
     }
     else {

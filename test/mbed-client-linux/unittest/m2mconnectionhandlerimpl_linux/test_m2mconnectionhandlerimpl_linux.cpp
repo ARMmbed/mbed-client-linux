@@ -33,7 +33,7 @@ public:
         dataAvailable = true;
     }
 
-    void socket_error(uint8_t error_code){error = true;}
+    void socket_error(uint8_t error_code, bool retry = true) {error = true;}
 
     void address_ready(const M2MConnectionObserver::SocketAddress &,
                        M2MConnectionObserver::ServerType,

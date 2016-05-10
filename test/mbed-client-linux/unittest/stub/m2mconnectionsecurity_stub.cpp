@@ -24,12 +24,14 @@
 bool m2mconnectionsecurityimpl_stub::use_inc_int;
 int m2mconnectionsecurityimpl_stub::inc_int_value;
 int m2mconnectionsecurityimpl_stub::int_value;
+int m2mconnectionsecurityimpl_stub::connect_int_value;
 
 void m2mconnectionsecurityimpl_stub::clear()
 {
     int_value = -1;
     use_inc_int = false;
     inc_int_value = 0;
+    connect_int_value = 0;
 }
 
 M2MConnectionSecurity::M2MConnectionSecurity(M2MConnectionSecurity::SecurityMode mode)
@@ -51,10 +53,7 @@ int M2MConnectionSecurity::init(const M2MSecurity *security){
 }
 
 int M2MConnectionSecurity::connect(M2MConnectionHandler* connHandler){
-    if(m2mconnectionsecurityimpl_stub::use_inc_int){
-        return m2mconnectionsecurityimpl_stub::inc_int_value++;
-    }
-    return m2mconnectionsecurityimpl_stub::int_value;
+    return m2mconnectionsecurityimpl_stub::connect_int_value;
 }
 
 int M2MConnectionSecurity::start_connecting_non_blocking(M2MConnectionHandler* connHandler)

@@ -20,6 +20,7 @@
 namespace m2mconnectionsecurityimpl_stub
 {
     extern int int_value;
+    extern int connect_int_value;
     extern bool use_inc_int;
     extern int inc_int_value;
     void clear();

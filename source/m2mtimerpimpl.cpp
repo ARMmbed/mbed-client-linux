@@ -21,7 +21,7 @@
 #include "mbed-client-linux/m2mtimerpimpl.h"
 #include "mbed-client/m2mtimerobserver.h"
 
-static void expired(union sigval sigval);
+void expired(union sigval sigval);
 
 M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
 : _observer(observer),

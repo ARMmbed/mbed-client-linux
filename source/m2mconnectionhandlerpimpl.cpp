@@ -16,6 +16,7 @@
 
 #include <sys/types.h>
 #include <netdb.h>
+#include <fcntl.h>
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "mbed-client/m2mconnectionhandler.h"
 #include "include/connthreadhelper.h"
@@ -77,12 +78,8 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 
 bool M2MConnectionHandlerPimpl::bind_connection(const uint16_t listen_port)
 {
-    bool success = false;
-    if(_listen_port == 0) {
-         success = true;
-        _listen_port = listen_port;
-    }
-    return success;
+    _listen_port = listen_port;
+    return true;
 }
 
 bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_address,
@@ -92,7 +89,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
 {
     tr_debug("M2MConnectionHandlerPimpl::resolve_server_address");
     M2MConnectionHandler::ConnectionError error = M2MConnectionHandler::ERROR_NONE;
-
+    bool retry = true;
     /* Resolve hostname of NSP */
     if (resolve_hostname(server_address.c_str(), server_port)) {
         if( security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Certificate ||
@@ -101,19 +98,36 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
             if( _security_impl != NULL ){
                 _security_impl->reset();
                 if (_security_impl->init(security) == 0) {
-                    if (_security_impl->connect(_base) == 0) {
+                    int ret = -1;
+                    int retry_count = 0;
+                    do {
+                        ret = _security_impl->connect(_base);
+                        if (ret == -1 && !is_tcp_connection()) {
+                            tr_debug("M2MConnectionHandlerPimpl::resolve_server_address - retry handshake");
+                            _security_impl->reset();
+                            _security_impl->init(security);
+                            retry_count++;
+                        } else {
+                            break;
+                        }
+                    } while (retry_count <= YOTTA_CFG_RECONNECTION_COUNT);
+
+                    if (ret == 0) {
                         _use_secure_connection = true;
                     } else {
                         tr_error("M2MConnectionHandlerPimpl::resolve_server_address - hanshake failed");
+                        _security_impl->reset();
                         error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
                     }
                 } else {
                     tr_error("M2MConnectionHandlerPimpl::resolve_server_address - init failed");
                     error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
+                    retry = false;
                 }
             } else {
                 tr_error("M2MConnectionHandlerPimpl::resolve_server_address - sec is null");
                 error = M2MConnectionHandler::SSL_CONNECTION_ERROR;
+                retry = false;
             }
         }
     }
@@ -123,7 +137,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     }
 
     if (error != M2MConnectionHandler::ERROR_NONE) {
-        _observer.socket_error(error);
+        _observer.socket_error(error, retry);
         return false;
     }
     else {
@@ -195,76 +209,88 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
             pthread_join(_listen_thread, NULL);
         }
         int16_t rcv_size = -1;
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(_socket_server, &read_fds);
+        timeval timeout = { 5, 0 }; // 5 seconds
+        select(_socket_server + 1, &read_fds, NULL, NULL, &timeout);
         memset(_received_buffer, 0, BUFFER_LENGTH);
         if( _use_secure_connection ){
-            while(_receive_data){
-                int rcv_size = _security_impl->read(_received_buffer, BUFFER_LENGTH);
-                tr_debug("M2MConnectionHandlerPimpl::data_receive - rcv_size %d", rcv_size);
-                if(rcv_size > 0){
-                    if (_stack == M2MInterface::LwIP_IPv4) {
-                        _received_packet_address->_port = ntohs(_sa_dst.sin_port);
+            while (_receive_data) {
+                if (FD_ISSET(_socket_server, &read_fds)) {
+                    int rcv_size = _security_impl->read(_received_buffer, BUFFER_LENGTH);
+                    tr_debug("M2MConnectionHandlerPimpl::data_receive - rcv_size %d", rcv_size);
+                    if(rcv_size > 0){
+                        if (_stack == M2MInterface::LwIP_IPv4) {
+                            _received_packet_address->_port = ntohs(_sa_dst.sin_port);
+                        }
+                        else if (_stack == M2MInterface::LwIP_IPv6) {
+                            _received_packet_address->_port = ntohs(_sa_dst6.sin6_port);
+                        }
+                        _observer.data_available(_received_buffer, rcv_size, *_received_packet_address);
                     }
-                    else if (_stack == M2MInterface::LwIP_IPv6) {
-                        _received_packet_address->_port = ntohs(_sa_dst6.sin6_port);
-                    }                    
-                    _observer.data_available(_received_buffer, rcv_size, *_received_packet_address);
-                }
-                // EOF received or some negative error code
-                else{
-                    tr_error("M2MConnectionHandlerPimpl::data_receive - secure error: %s", strerror(errno));
+                    // EOF received or some negative error code
+                    else{
+                        tr_error("M2MConnectionHandlerPimpl::data_receive - secure error: %s", strerror(errno));
+                        _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR);
+                        _receive_data = false;
+                    }
+                    memset(_received_buffer, 0, BUFFER_LENGTH);
+                } else {
                     _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR);
                     _receive_data = false;
                 }
-                memset(_received_buffer, 0, BUFFER_LENGTH);
-            }
+           }
         }else{
             while(_receive_data) {
                 char rcv_in_addr[INET6_ADDRSTRLEN];
                 memset(rcv_in_addr,0,INET6_ADDRSTRLEN);
-                switch (_stack) {
-                case M2MInterface::LwIP_IPv4:
-                    do {
-                        rcv_size=recvfrom(_socket_server, _received_buffer,
-                                      BUFFER_LENGTH, 0, (struct sockaddr *)&_sa_dst,
-                                      (socklen_t*)&_slen_sa_dst);
-                    }
-                    while(rcv_size == -1 && errno == EINTR);
-
-                    inet_ntop(AF_INET, &(_sa_dst.sin_addr),rcv_in_addr,INET_ADDRSTRLEN);
-                    if (rcv_size > 0) {
-                        if(_received_packet_address) {
-                            _received_packet_address->_port = ntohs(_sa_dst.sin_port);
-                            memcpy(_received_packet_address->_address, &_sa_dst.sin_addr, 4);
-                            _received_packet_address->_stack = _stack;
-                            _received_packet_address->_length = 4;
+                if (FD_ISSET(_socket_server, &read_fds)) {
+                    switch (_stack) {
+                    case M2MInterface::LwIP_IPv4:
+                        do {
+                            rcv_size=recvfrom(_socket_server, _received_buffer,
+                                          BUFFER_LENGTH, 0, (struct sockaddr *)&_sa_dst,
+                                          (socklen_t*)&_slen_sa_dst);
                         }
-                    }
-                    break;
-                case M2MInterface::LwIP_IPv6:
-                    do {
-                        rcv_size=recvfrom(_socket_server, _received_buffer,
-                                      BUFFER_LENGTH, 0, (struct sockaddr *)&_sa_dst6,
-                                      (socklen_t*)&_slen_sa_dst6);
-                    }
-                    while(rcv_size == -1 && errno == EINTR);
+                        while(rcv_size == -1 && errno == EINTR);
 
-                    if (rcv_size > 0) {
-                        inet_ntop(AF_INET6,
-                                  &(_sa_dst6.sin6_addr),
-                                  rcv_in_addr,
-                                  INET6_ADDRSTRLEN);
+                        inet_ntop(AF_INET, &(_sa_dst.sin_addr),rcv_in_addr,INET_ADDRSTRLEN);
+                        if (rcv_size > 0) {
+                            if(_received_packet_address) {
+                                _received_packet_address->_port = ntohs(_sa_dst.sin_port);
+                                memcpy(_received_packet_address->_address, &_sa_dst.sin_addr, 4);
+                                _received_packet_address->_stack = _stack;
+                                _received_packet_address->_length = 4;
+                            }
+                        }
+                        break;
+                    case M2MInterface::LwIP_IPv6:
+                        do {
+                            rcv_size=recvfrom(_socket_server, _received_buffer,
+                                          BUFFER_LENGTH, 0, (struct sockaddr *)&_sa_dst6,
+                                          (socklen_t*)&_slen_sa_dst6);
+                        }
+                        while(rcv_size == -1 && errno == EINTR);
+
+                        if (rcv_size > 0) {
+                            inet_ntop(AF_INET6,
+                                      &(_sa_dst6.sin6_addr),
+                                      rcv_in_addr,
+                                      INET6_ADDRSTRLEN);
+                        }
+                        if(_received_packet_address) {
+                            _received_packet_address->_port = ntohs(_sa_dst6.sin6_port);
+                            memcpy(_received_packet_address->_address,
+                                   &_sa_dst6.sin6_addr,
+                                   sizeof(_sa_dst6.sin6_addr));
+                            _received_packet_address->_stack = _stack;
+                            _received_packet_address->_length = sizeof(_sa_dst6.sin6_addr);
+                        }
+                        break;
+                    default:
+                        break;
                     }
-                    if(_received_packet_address) {
-                        _received_packet_address->_port = ntohs(_sa_dst6.sin6_port);
-                        memcpy(_received_packet_address->_address,
-                               &_sa_dst6.sin6_addr,
-                               sizeof(_sa_dst6.sin6_addr));
-                        _received_packet_address->_stack = _stack;
-                        _received_packet_address->_length = sizeof(_sa_dst6.sin6_addr);
-                    }
-                    break;
-                default:
-                    break;
                 }
 
                 if (rcv_size == -1) {
@@ -275,8 +301,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
 
                 /* If message received.. */
                 if(rcv_size > 0 && _received_packet_address) {
-                    if(_binding_mode == M2MInterface::TCP ||
-                       _binding_mode == M2MInterface::TCP_QUEUE){
+                    if(is_tcp_connection()){
                         //We need to "shim" out the length from the front
                         if( rcv_size > 4 ){
                             uint64_t len = (_received_buffer[0] << 24 & 0xFF000000) + (_received_buffer[1] << 16 & 0xFF0000);
@@ -332,8 +357,7 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
                     }
 
                 ssize_t ret = -1;
-                if(_binding_mode == M2MInterface::TCP ||
-                   _binding_mode == M2MInterface::TCP_QUEUE){
+                if(is_tcp_connection()){
                     //We need to "shim" the length in front
                     uint16_t d_len = data_len+4;
                     uint8_t* d = (uint8_t*)malloc(data_len+4);
@@ -388,6 +412,8 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
                                                  const uint16_t server_port)
 {
     tr_debug("M2MConnectionHandlerPimpl::resolve_hostname");
+    _slen_sa_dst = sizeof(_sa_dst);
+    _slen_sa_dst6 = sizeof(_sa_dst6);
     bool success = false;
     struct addrinfo *addr_info = NULL;
     struct addrinfo hints;
@@ -402,6 +428,10 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
         hints.ai_family = AF_UNSPEC;
     }
 
+    if(_socket_server > 0) {
+        close(_socket_server);
+        _socket_server = -1;
+    }
     create_socket();
     if (_socket_server != -1) {
         success = true;
@@ -422,6 +452,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
         if (r == 0 && addr_info) {
             struct sockaddr_in *a = NULL;
             struct sockaddr_in6 *a6 = NULL;
+
             char ip_address[INET6_ADDRSTRLEN];
             while(addr_info) {
                 switch(addr_info->ai_family) {
@@ -439,7 +470,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
                             memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
                             if (connect(_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst) != 0) {
                                 success = false;
-                                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - failed to connect %s\n", ip_address);
+                                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - failed to connect %s, %s", ip_address, strerror(errno));
                             } else {
                                 success = true;
                                 tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - connected to %s\n", ip_address);
@@ -488,8 +519,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
     }
 
     if (success) {
-        if(_binding_mode == M2MInterface::TCP ||
-           _binding_mode == M2MInterface::TCP_QUEUE ){
+        if(is_tcp_connection()){
 #if YOTTA_CFG_TCP_KEEPALIVE_TIME
             int keepalive = YOTTA_CFG_TCP_KEEPALIVE_TIME;
             tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - keepalive %d s\n", keepalive);
@@ -508,8 +538,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
 
 void M2MConnectionHandlerPimpl::create_socket() {
     if (_stack == M2MInterface::LwIP_IPv4) {
-        if(_binding_mode == M2MInterface::TCP ||
-           _binding_mode == M2MInterface::TCP_QUEUE ){
+        if(is_tcp_connection()){
             _socket_server = socket(AF_INET, SOCK_STREAM,
                     IPPROTO_TCP);
         } else {
@@ -519,8 +548,7 @@ void M2MConnectionHandlerPimpl::create_socket() {
     }
     else if (_stack == M2MInterface::LwIP_IPv6 ||
              _stack == M2MInterface::Nanostack_IPv6) {
-        if(_binding_mode == M2MInterface::TCP ||
-           _binding_mode == M2MInterface::TCP_QUEUE ){
+        if(is_tcp_connection()){
             _socket_server = socket(AF_INET6, SOCK_STREAM,
                     IPPROTO_TCP);
         } else {
@@ -552,4 +580,10 @@ int M2MConnectionHandlerPimpl::bind_socket() {
     else {
         return -1;
     }
+}
+
+bool M2MConnectionHandlerPimpl::is_tcp_connection()
+{
+    return _binding_mode == M2MInterface::TCP ||
+            _binding_mode == M2MInterface::TCP_QUEUE ? true : false;
 }

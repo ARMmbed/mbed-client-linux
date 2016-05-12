@@ -444,3 +444,35 @@ int inet_pton (int __af, const char *__restrict __cp,
 {
     return common_stub::int_value;
 }
+
+/* Create new per-process timer using CLOCK_ID.  */
+extern int timer_create (clockid_t __clock_id,
+             struct sigevent *__restrict __evp,
+             timer_t *__restrict __timerid) __THROW
+{
+    (*(int*)__timerid) = common_stub::int_value;
+}
+
+/* Delete timer TIMERID.  */
+extern int timer_delete (timer_t __timerid) __THROW
+{
+
+}
+
+/* Set timer TIMERID to VALUE, returning old value in OVALUE.  */
+extern int timer_settime (timer_t __timerid, int __flags,
+              const struct itimerspec *__restrict __value,
+              struct itimerspec *__restrict __ovalue) __THROW
+{
+
+}
+
+/* Get current value of timer TIMERID and store it in VALUE.  */
+extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
+     __THROW
+{
+    itimerspec timer_spec;
+    timer_spec.it_value.tv_sec = common_stub::int2_value / 1000;
+    timer_spec.it_value.tv_nsec = (common_stub::int2_value % 1000) * 1000000;
+    *__value = timer_spec;
+}

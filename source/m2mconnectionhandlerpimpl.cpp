@@ -467,7 +467,6 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
                             _received_packet_address->_length = 4;
                             _sa_dst.sin_family = AF_INET;
                             _sa_dst.sin_port = ntohs(server_port);
-                            tr_error("M2MConnectionHandlerPimpl::resolve_hostname - slen_sa_dst %d", _slen_sa_dst);
                             memcpy(&_sa_dst.sin_addr, _received_packet_address->_address, _received_packet_address->_length);
                             if (connect(_socket_server, (const struct sockaddr *)&_sa_dst, _slen_sa_dst) != 0) {
                                 success = false;

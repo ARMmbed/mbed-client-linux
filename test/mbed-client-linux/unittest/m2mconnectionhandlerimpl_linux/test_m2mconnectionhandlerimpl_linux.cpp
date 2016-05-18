@@ -170,3 +170,18 @@ void Test_M2MConnectionHandler_linux::test_handle_connection_error()
     // To manage code coverage
     handler->handle_connection_error(5);
 }
+
+void Test_M2MConnectionHandler_linux::test_set_platform_network_handler()
+{
+    handler->set_platform_network_handler(NULL);
+}
+
+void Test_M2MConnectionHandler_linux::test_claim_mutex()
+{
+    handler->claim_mutex();
+}
+
+void Test_M2MConnectionHandler_linux::test_release_mutex()
+{
+    handler->release_mutex();
+}

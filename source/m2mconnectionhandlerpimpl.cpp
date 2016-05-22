@@ -561,6 +561,7 @@ void M2MConnectionHandlerPimpl::create_socket() {
 }
 
 int M2MConnectionHandlerPimpl::bind_socket() {
+    tr_debug("M2MConnectionHandlerPimpl::bind_socket - port: %d", _listen_port);
     if (_stack == M2MInterface::LwIP_IPv4) {
         memset((char *) &_sa_src, 0, sizeof(_sa_src));
         _sa_src.sin_family = AF_INET;

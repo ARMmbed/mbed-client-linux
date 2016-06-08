@@ -21,6 +21,7 @@
 #include "mbed-client/m2mconnectionhandler.h"
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2msecurity.h"
+#include "mbed-client/m2mconfig.h"
 #include "mbed-trace/mbed_trace.h"
 
 #define TRACE_GROUP "mClt"
@@ -110,7 +111,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                         } else {
                             break;
                         }
-                    } while (retry_count <= YOTTA_CFG_RECONNECTION_COUNT);
+                    } while (retry_count <= MBED_CLIENT_RECONNECTION_COUNT);
 
                     if (ret == 0) {
                         _use_secure_connection = true;
@@ -520,8 +521,8 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
 
     if (success) {
         if(is_tcp_connection()){
-#if YOTTA_CFG_TCP_KEEPALIVE_TIME
-            int keepalive = YOTTA_CFG_TCP_KEEPALIVE_TIME;
+#if MBED_CLIENT_TCP_KEEPALIVE_TIME
+            int keepalive = MBED_CLIENT_TCP_KEEPALIVE_TIME;
             tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - keepalive %d s\n", keepalive);
             if(setsockopt(_socket_server,
                           SOL_SOCKET,

@@ -110,7 +110,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                         } else {
                             break;
                         }
-                    } while (retry_count <= YOTTA_CFG_RECONNECTION_COUNT);
+                    } while (retry_count <= MBED_CLIENT_RECONNECTION_COUNT);
 
                     if (ret == 0) {
                         _use_secure_connection = true;

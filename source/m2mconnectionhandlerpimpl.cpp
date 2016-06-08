@@ -21,6 +21,7 @@
 #include "mbed-client/m2mconnectionhandler.h"
 #include "include/connthreadhelper.h"
 #include "mbed-client/m2msecurity.h"
+#include "mbed-client/m2mconfig.h"
 #include "mbed-trace/mbed_trace.h"
 
 #define TRACE_GROUP "mClt"

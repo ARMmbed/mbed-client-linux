@@ -520,8 +520,8 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
 
     if (success) {
         if(is_tcp_connection()){
-#if YOTTA_CFG_TCP_KEEPALIVE_TIME
-            int keepalive = YOTTA_CFG_TCP_KEEPALIVE_TIME;
+#if MBED_CLIENT_TCP_KEEPALIVE_TIME
+            int keepalive = MBED_CLIENT_TCP_KEEPALIVE_TIME;
             tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - keepalive %d s\n", keepalive);
             if(setsockopt(_socket_server,
                           SOL_SOCKET,

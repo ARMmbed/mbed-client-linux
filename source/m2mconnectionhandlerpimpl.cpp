@@ -17,6 +17,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "mbed-client/m2mconnectionhandler.h"
 #include "include/connthreadhelper.h"
@@ -523,13 +525,28 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
         if(is_tcp_connection()){
 #if MBED_CLIENT_TCP_KEEPALIVE_TIME
             int keepalive = MBED_CLIENT_TCP_KEEPALIVE_TIME;
+            int enable = 1;
             tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - keepalive %d s\n", keepalive);
             if(setsockopt(_socket_server,
                           SOL_SOCKET,
                           SO_KEEPALIVE,
+                          &enable,
+                          sizeof(enable)) != 0) {
+                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - setsockopt fail to Set Keepalive\n");
+            }
+            if(setsockopt(_socket_server,
+                          SOL_TCP,
+                          TCP_KEEPIDLE,
                           &keepalive,
                           sizeof(keepalive)) != 0) {
-                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - setsockopt fail\n");
+                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - setsockopt fail to Set Keepalive Time\n");
+            }
+            if(setsockopt(_socket_server,
+                          SOL_TCP,
+                          TCP_KEEPINTVL,
+                          &keepalive,
+                          sizeof(keepalive)) != 0) {
+                tr_error("M2MConnectionHandlerPimpl::resolve_hostname - setsockopt fail to Set Keepalive TimeInterval\n");
             }
 #endif
         }

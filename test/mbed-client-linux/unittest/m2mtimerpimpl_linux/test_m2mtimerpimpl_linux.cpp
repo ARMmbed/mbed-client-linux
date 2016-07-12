@@ -54,7 +54,8 @@ void Test_M2MTimerPimpl_linux::test_stop_timer()
     common_stub::int_value = 1;
     timer->start_timer(100,M2MTimerObserver::Notdefined,true);
     timer->stop_timer();
-    CHECK(timer->_timer_id == 0);
+    CHECK(timer->_timer_specs.it_value.tv_sec == 0);
+    CHECK(timer->_timer_specs.it_value.tv_nsec == 0);
 }
 
 void Test_M2MTimerPimpl_linux::test_timer_expired()

@@ -22,7 +22,7 @@
 #include "mbed-client/m2mtimerobserver.h"
 
 void expired(union sigval sigval);
-#include <stdio.h>
+
 M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
 : _observer(observer),
   _single_shot(true),

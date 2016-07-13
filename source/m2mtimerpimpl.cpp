@@ -37,14 +37,14 @@ M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
     _signal_event.sigev_notify_function = expired;
     _signal_event.sigev_notify_attributes = NULL;
 
-    _started = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
+    _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
 }
 
 M2MTimerPimpl::~M2MTimerPimpl()
 {
-    if(!_started){
+    if(!_status){
         timer_delete(_timer_id);
-        _started = -1;
+        _status = -1;
     }
 }
 
@@ -72,7 +72,7 @@ void M2MTimerPimpl::start_dtls_timer(uint64_t intermediate_interval, uint64_t to
 
 void M2MTimerPimpl::stop_timer()
 {
-    if (!_started) {
+    if (!_status) {
 
         _timer_specs.it_value.tv_sec = 0;
         _timer_specs.it_value.tv_nsec = 0;
@@ -96,11 +96,11 @@ void M2MTimerPimpl::timer_expired()
 void M2MTimerPimpl::start()
 {
 
-    if(_started){
-        _started = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
+    if(_status){
+        _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
     }
 
-    if(!_started)
+    if(!_status)
     {
 
         stop_timer();
@@ -129,7 +129,7 @@ bool M2MTimerPimpl::is_total_interval_passed()
 bool M2MTimerPimpl::is_intermediate_interval_passed()
 {
     itimerspec timer_spec;
-    if (!_started) {
+    if (!_status) {
         timer_gettime(_timer_id, &timer_spec);
         timer_settime(_timer_id, 0, &timer_spec, NULL);
 

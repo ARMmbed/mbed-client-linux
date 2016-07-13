@@ -44,7 +44,7 @@ M2MTimerPimpl::~M2MTimerPimpl()
 {
     if(!_started){
         timer_delete(_timer_id);
-        _started = 0;
+        _started = -1;
     }
 }
 

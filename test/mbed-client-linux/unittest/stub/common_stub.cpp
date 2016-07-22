@@ -450,7 +450,7 @@ extern int timer_create (clockid_t __clock_id,
              struct sigevent *__restrict __evp,
              timer_t *__restrict __timerid) __THROW
 {
-    (*(int*)__timerid) = common_stub::int_value;
+    return common_stub::int_value;
 }
 
 /* Delete timer TIMERID.  */

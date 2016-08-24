@@ -30,14 +30,22 @@ M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
   _type(M2MTimerObserver::Notdefined),
   _intermediate_interval(0),
   _total_interval(0),
-  _timer_id(0),
   _total_interval_expired(false)
 {
+    _signal_event.sigev_notify = SIGEV_THREAD;
+    _signal_event.sigev_value.sival_ptr = (void*) this;
+    _signal_event.sigev_notify_function = expired;
+    _signal_event.sigev_notify_attributes = NULL;
+
+    _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
 }
 
 M2MTimerPimpl::~M2MTimerPimpl()
 {
-    stop_timer();
+    if(!_status){
+        timer_delete(_timer_id);
+        _status = -1;
+    }
 }
 
 void M2MTimerPimpl::start_timer( uint64_t interval,
@@ -64,9 +72,13 @@ void M2MTimerPimpl::start_dtls_timer(uint64_t intermediate_interval, uint64_t to
 
 void M2MTimerPimpl::stop_timer()
 {
-    if (_timer_id != 0) {
-        timer_delete(_timer_id);
-        _timer_id = 0;
+    if (!_status) {
+
+        _timer_specs.it_value.tv_sec = 0;
+        _timer_specs.it_value.tv_nsec = 0;
+
+        timer_settime(_timer_id, 0, &_timer_specs, NULL);
+
     }
 }
 
@@ -83,24 +95,30 @@ void M2MTimerPimpl::timer_expired()
 
 void M2MTimerPimpl::start()
 {
-    stop_timer();
-    _timer_specs.it_value.tv_sec = _interval / 1000;
-    _timer_specs.it_value.tv_nsec = (_interval % 1000) * 1000000;
-    _timer_specs.it_interval.tv_sec = 0;
-    _timer_specs.it_interval.tv_nsec = 0;
 
-    if (!_single_shot) {
-        _timer_specs.it_interval.tv_sec = _interval / 1000;
-        _timer_specs.it_interval.tv_nsec = (_interval % 1000) * 1000000;
+    if(_status){
+        _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
     }
 
-    memset(&_signal_event, 0, sizeof(_signal_event));
-    _signal_event.sigev_notify = SIGEV_THREAD;
-    _signal_event.sigev_value.sival_ptr = (void*) this;
-    _signal_event.sigev_notify_function = expired;
+    if(!_status)
+    {
 
-    timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
-    timer_settime(_timer_id, 0, &_timer_specs, NULL);
+        stop_timer();
+
+        _timer_specs.it_value.tv_sec = _interval / 1000;
+        _timer_specs.it_value.tv_nsec = (_interval % 1000) * 1000000;
+        _timer_specs.it_interval.tv_sec = 0;
+        _timer_specs.it_interval.tv_nsec = 0;
+
+        if (!_single_shot) {
+            _timer_specs.it_interval.tv_sec = _interval / 1000;
+            _timer_specs.it_interval.tv_nsec = (_interval % 1000) * 1000000;
+        }
+
+        timer_settime(_timer_id, 0, &_timer_specs, NULL);
+
+    }
+
 }
 
 bool M2MTimerPimpl::is_total_interval_passed()
@@ -111,7 +129,7 @@ bool M2MTimerPimpl::is_total_interval_passed()
 bool M2MTimerPimpl::is_intermediate_interval_passed()
 {
     itimerspec timer_spec;
-    if (_timer_id != 0 ) {
+    if (!_status) {
         timer_gettime(_timer_id, &timer_spec);
         timer_settime(_timer_id, 0, &timer_spec, NULL);
 

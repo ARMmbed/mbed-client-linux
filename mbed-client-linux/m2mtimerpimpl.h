@@ -87,6 +87,7 @@ private:
 
 private:
     M2MTimerObserver&       _observer;
+    int                     _status;
     bool                    _single_shot;
     uint64_t                _interval;
     M2MTimerObserver::Type  _type;

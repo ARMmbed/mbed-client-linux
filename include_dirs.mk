@@ -6,4 +6,7 @@ INCLUDE_DIRS := \
         ../lwm2m-client \
         ../lwm2m-client-linux/source \
         source \
-
+        ../mbed-client \
+        ../mbed-client-c \
+        ../mbed-trace \
+	../nanostack-libservice/mbed-client-libservice \

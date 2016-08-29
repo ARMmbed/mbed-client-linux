@@ -24,12 +24,19 @@ ifeq ($(DEBUG),1)
 override CFLAGS += -DHAVE_DEBUG
 endif
 
+
 #
 # Define compiler toolchain
 #
 include toolchain_rules.mk
 
 $(eval $(call generate_rules,$(LIB),$(SRCS)))
+
+# perform a git clone of the submodules listed in $(LIBS)
+# no submodules, just a no operation target
+.PHONY: fetch_source
+fetch_source: 
+
 
 # Extend default clean rule
 clean: clean-extra

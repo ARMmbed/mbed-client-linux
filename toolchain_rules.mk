@@ -27,11 +27,9 @@
 
 #
 # If PLATFORM prefix is defined,
-# generate CC and AR accordingly
-#
+# generate CC
 ifneq ($(strip $(PLATFORM)),)
 CC:=$(PLATFORM)gcc
-AR:=$(PLATFORM)ar
 endif
 
 #
@@ -60,9 +58,11 @@ endif
 # GCC toolchains
 #
 ifneq (,$(findstring gcc,$(CC)))
+	# Use AR prefix
+	AR:=$(CC:%gcc=%ar)
 	# Flags for common toolchain, usually GCC or CC
 	AROPTS=-rsc $@ $^
-	override CFLAGS += -Wall -pedantic-errors
+	override CFLAGS += -Wall -Wextra -pedantic -Wshadow -pedantic-errors
 	# Dependency generation
 	override CFLAGS += -MMD -MP
 	ifneq (,$(CPU))
@@ -74,6 +74,34 @@ ifneq (,$(findstring gcc,$(CC)))
 	override CFLAGS += -mthumb
 	endif
 	endif
+	# Debug
+	ifeq ($(DEBUG),1)
+	override CFLAGS += -g -O0
+	else
+	override CFLAGS += -Os
+	endif
+	# Enable Coverage generation
+	ifeq ($(COVERAGE),1)
+	override CFLAGS += -ftest-coverage -fprofile-arcs
+	override LDFLAGS += -ftest-coverage -fprofile-arcs
+	endif
+	COMPILE = $(CC) -std=gnu99 -c -o $@
+	CXXCOMPILE = $(CC) -std=c++11 -c -o $@
+#
+# LLVM/Clang toolchains
+#
+else ifneq (,$(findstring clang,$(CC)))
+	# Find AR, is 'ar' or 'llvm-ar-version'
+	ifneq (,$(shell which $(CC:clang%=llvm-ar%)))
+		AR:=$(CC:clang%=llvm-ar%)
+	else
+		AR:=ar
+	endif
+	# Flags for common toolchain, usually GCC or CC
+	AROPTS=rsc $@ $^
+	override CFLAGS += -Wall -Wextra -pedantic -Wshadow -pedantic-errors
+	# Dependency generation
+	override CFLAGS += -MMD -MP
 	# Debug
 	ifeq ($(DEBUG),1)
 	override CFLAGS += -g -O0
@@ -95,7 +123,13 @@ else ifneq (,$(findstring iccarm,$(CC)))
 	AR:=iarchive
 	AROPTS=$^ --create -o $@
 	DLIB_FILE=$(subst bin\iccarm.exe,inc\c\DLib_Config_Full.h,$(shell where iccarm))
-	override CFLAGS += --dlib_config '$(DLIB_FILE)' --cpu Cortex-M4 --vla --diag_suppress Pa50
+	override CFLAGS += --dlib_config '$(DLIB_FILE)' --vla --diag_suppress Pa50
+	ifneq (,$(CPU))
+		override CFLAGS += --cpu $(CPU)
+		ifeq (Cortex-M,$(findstring Cortex-M,$(CPU)))
+		override CFLAGS += --thumb
+		endif
+	endif
 	# Dependency generation
 	override CFLAGS += --dependencies=m $(basename $@).d
 	# Debug
@@ -104,7 +138,7 @@ else ifneq (,$(findstring iccarm,$(CC)))
 	else
 	override CFLAGS += -Om
 	endif
-	COMPILE = $(CC) -c -o $@
+	COMPILE = $(CC) -c --silent -o $@
 
 #
 # ArmCC toolchain (Used by Keil)
@@ -113,6 +147,7 @@ else ifneq (,$(findstring armcc,$(CC)))
 	AR:=armar
 	AROPTS=-rsc $@ $^
 	override CFLAGS += --c99 --no_wrap_diagnostics
+	override CFLAGS += --licretry
 	# Dependency generation
 	override CFLAGS += --depend $(basename $@).d --phony_targets
 	LIB:=$(LIB:%.a=%.lib)
@@ -123,7 +158,7 @@ else ifneq (,$(findstring armcc,$(CC)))
 	ifeq ($(DEBUG),1)
 	override CFLAGS += -g -O0
 	else
-	override CFLAGS += -O2
+	override CFLAGS += -Ospace
 	endif
 	COMPILE = $(CC) -c -o $@
 
@@ -145,7 +180,7 @@ else ifneq (,$(findstring iccrl78,$(CC)))
 	else
 	override CFLAGS += -Ohz
 	endif
-	COMPILE = $(CC) -o $@
+	COMPILE = $(CC) --silent -o $@
 
 #
 # IAR MSP430 toolchain
@@ -160,23 +195,31 @@ else ifneq (,$(findstring icc430,$(CC)))
 	# Dependency generation
 	LIB:=$(LIB:%.a=%.lib)
 	override CFLAGS += --dependencies=m $(basename $@).d
+	# Suppress warnings for \n line endings
+	override CFLAGS += --diag_suppress=Pa050
 	# Debug
 	ifeq ($(DEBUG),1)
 	override CFLAGS += --debug -On
 	else
 	override CFLAGS += -Ohz
 	endif
-	COMPILE = $(CC) -o $@
+	COMPILE = $(CC) --silent -o $@
 
 #
 # CppCheck toolchain
 # This is used only for static testing the code.
-# cppcheck is used in place of compiler and linker phase is ignored
+# cppcheck is used in place linker
 else ifneq (,$(findstring cppcheck,$(CC)))
 	AR = cppcheck -q --enable=warning --enable=style --std=c99 --inline-suppr -DCPPCHECK $(CPPCHECK_OPTS) $(CFLAGS) $(SRCS)
 	COMPILE = true
 	CPPCHECK = 1
 	LIB:= "ignored_with_cppcheck"
+
+else ifneq (,$(findstring splint,$(CC)))
+	AR = splint -strict-lib -weak $(CFLAGS) $(SRCS)
+	COMPILE = true
+	CPPCHECK = 1
+	LIB:= "ignored_with_splint"
 
 
 ###################################

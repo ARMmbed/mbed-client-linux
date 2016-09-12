@@ -74,6 +74,8 @@ void M2MTimerPimpl::stop_timer()
 {
     if (!_status) {
 
+        _timer_specs.it_interval.tv_sec = 0;
+        _timer_specs.it_interval.tv_nsec = 0;
         _timer_specs.it_value.tv_sec = 0;
         _timer_specs.it_value.tv_nsec = 0;
 

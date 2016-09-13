@@ -209,7 +209,7 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
     tr_debug("M2MConnectionHandlerPimpl::data_receive");
     if(object != NULL){
         M2MConnectionHandlerPimpl *thread_object = static_cast<M2MConnectionHandlerPimpl*> (object);
-        if(thread_object) {
+        if(thread_object && _listen_thread > 0) {
             pthread_join(_listen_thread, NULL);
         }
         int16_t rcv_size = -1;

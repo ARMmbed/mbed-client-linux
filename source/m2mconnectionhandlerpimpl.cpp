@@ -436,6 +436,7 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
         close(_socket_server);
         _socket_server = -1;
         pthread_join(_listen_thread, NULL);
+        _listen_thread = 0;
     }
     create_socket();
     if (_socket_server != -1) {

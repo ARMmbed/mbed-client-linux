@@ -71,7 +71,8 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 
     if(_listen_thread > 0) {
         if (!pthread_equal(_listen_thread, pthread_self())) {
-            pthread_detach(_listen_thread);
+            pthread_cancel(_listen_thread);
+            pthread_join(_listen_thread, NULL);
         }
     }
 
@@ -208,8 +209,9 @@ void M2MConnectionHandlerPimpl::data_receive(void *object)
     tr_debug("M2MConnectionHandlerPimpl::data_receive");
     if(object != NULL){
         M2MConnectionHandlerPimpl *thread_object = static_cast<M2MConnectionHandlerPimpl*> (object);
-        if(thread_object) {
+        if(thread_object && _listen_thread > 0) {
             pthread_join(_listen_thread, NULL);
+            _listen_thread = 0;
         }
         int16_t rcv_size = -1;
         fd_set read_fds;
@@ -434,6 +436,8 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
     if(_socket_server > 0) {
         close(_socket_server);
         _socket_server = -1;
+        pthread_join(_listen_thread, NULL);
+        _listen_thread = 0;
     }
     create_socket();
     if (_socket_server != -1) {

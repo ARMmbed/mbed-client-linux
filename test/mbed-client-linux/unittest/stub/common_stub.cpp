@@ -16,6 +16,8 @@
 #include "common_stub.h"
 #include "sn_grs.h"
 #include <sys/socket.h>
+#include <arpa/inet.h>
+
 
 socket_error_t common_stub::error;
 socket_event_t * common_stub::event;
@@ -423,6 +425,7 @@ ssize_t sendto (int , const void *, size_t ,
     return common_stub::int_value;
 }
 
+
 ssize_t recvfrom (int , void * , size_t ,
              int , __SOCKADDR_ARG ,
              socklen_t * )
@@ -435,8 +438,6 @@ int getaddrinfo (const char *__restrict,
             const struct addrinfo *__restrict,
             struct addrinfo **__restrict addr)
 {
-    //*addr = (addrinfo*)malloc(sizeof(addrinfo));
-    //(*addr)->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
     *addr = common_stub::addrinfo;
     return common_stub::int_value;
 }
@@ -457,6 +458,49 @@ const char *inet_ntop (int, const void *__restrict,
 
 int connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 {
+    return common_stub::int2_value;
+}
+
+int setsockopt (int __fd, int __level, int __optname,
+               const void *__optval, socklen_t __optlen)
+    __THROW
+{
+    return common_stub::int_value;
+}
+int inet_pton (int __af, const char *__restrict __cp,
+      void *__restrict __buf) __THROW
+{
     return common_stub::int_value;
 }
 
+/* Create new per-process timer using CLOCK_ID.  */
+extern int timer_create (clockid_t __clock_id,
+             struct sigevent *__restrict __evp,
+             timer_t *__restrict __timerid) __THROW
+{
+    return common_stub::int_value;
+}
+
+/* Delete timer TIMERID.  */
+extern int timer_delete (timer_t __timerid) __THROW
+{
+
+}
+
+/* Set timer TIMERID to VALUE, returning old value in OVALUE.  */
+extern int timer_settime (timer_t __timerid, int __flags,
+              const struct itimerspec *__restrict __value,
+              struct itimerspec *__restrict __ovalue) __THROW
+{
+
+}
+
+/* Get current value of timer TIMERID and store it in VALUE.  */
+extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
+     __THROW
+{
+    itimerspec timer_spec;
+    timer_spec.it_value.tv_sec = common_stub::int2_value / 1000;
+    timer_spec.it_value.tv_nsec = (common_stub::int2_value % 1000) * 1000000;
+    *__value = timer_spec;
+}

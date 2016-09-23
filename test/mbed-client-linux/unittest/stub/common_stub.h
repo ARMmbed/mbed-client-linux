@@ -16,9 +16,8 @@
 #ifndef COMMON_STUB_H
 #define COMMON_STUB_H
 
-//#include <sys/types.h>
+#include <sys/types.h>
 #include <netdb.h>
-//#include "UDPSocket.h"
 #include "sockets/UDPSocket.h"
 #include "nsdlaccesshelper.h"
 #include "ip6string.h"

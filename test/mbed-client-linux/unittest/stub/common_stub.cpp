@@ -16,8 +16,6 @@
 #include "common_stub.h"
 #include "sn_grs.h"
 #include <sys/socket.h>
-#include <arpa/inet.h>
-
 
 socket_error_t common_stub::error;
 socket_event_t * common_stub::event;
@@ -114,12 +112,25 @@ uint16_t sn_nsdl_update_registration(struct nsdl_s *,uint8_t *, uint8_t)
     return common_stub::uint_value;
 }
 
+uint16_t sn_nsdl_send_observation_notification_with_uri_path(struct nsdl_s *, uint8_t *, uint8_t,
+                                                    uint8_t *, uint16_t,
+                                                    uint8_t *, uint8_t,
+                                                    sn_coap_msg_type_e , uint8_t,
+                                                    uint8_t *, uint16_t)
+{
+    return common_stub::uint_value;
+}
 uint16_t sn_nsdl_send_observation_notification(struct nsdl_s *, uint8_t *, uint8_t,
                                                     uint8_t *, uint16_t,
                                                     uint8_t *, uint8_t,
                                                     sn_coap_msg_type_e , uint8_t)
 {
     return common_stub::uint_value;
+}
+
+int8_t sn_nsdl_set_endpoint_location(struct nsdl_s *, uint8_t *, uint8_t)
+{
+    return common_stub::int_value;
 }
 
 int8_t sn_nsdl_destroy(struct nsdl_s *handle)
@@ -147,13 +158,14 @@ int8_t sn_nsdl_exec(struct nsdl_s *, uint32_t)
     return common_stub::int_value;
 }
 
+int8_t sn_nsdl_set_retransmission_parameters(struct nsdl_s *, uint8_t, uint8_t)
+{
+    return common_stub::int_value;
+}
+
 void sn_nsdl_release_allocated_coap_msg_mem(struct nsdl_s *, sn_coap_hdr_s *header)
 {
     if(header && header != common_stub::coap_header){
-        if( header->content_type_ptr ){
-            free(header->content_type_ptr);
-            header->content_type_ptr = NULL;
-        }
         if( header->options_list_ptr){
             free(header->options_list_ptr);
             header->options_list_ptr = NULL;
@@ -161,6 +173,14 @@ void sn_nsdl_release_allocated_coap_msg_mem(struct nsdl_s *, sn_coap_hdr_s *head
         free(header);
         header = NULL;
     }
+}
+
+sn_coap_options_list_s *sn_nsdl_alloc_options_list(struct nsdl_s *handle, sn_coap_hdr_s *coap_msg_ptr)
+{
+    if( common_stub::coap_header ) {
+        return common_stub::coap_header->options_list_ptr;
+    }
+    return NULL;
 }
 
 int8_t sn_nsdl_create_resource(struct nsdl_s *, sn_nsdl_resource_info_s *)
@@ -183,7 +203,7 @@ int8_t sn_nsdl_update_resource(struct nsdl_s *, sn_nsdl_resource_info_s *)
     return common_stub::int_value;
 }
 
-int8_t set_NSP_address(struct nsdl_s *, uint8_t *, uint16_t, sn_nsdl_addr_type_e)
+int8_t set_NSP_address_2(struct nsdl_s *, uint8_t *, uint8_t, uint16_t, sn_nsdl_addr_type_e)
 {
     return common_stub::int_value;
 }
@@ -227,8 +247,12 @@ int8_t sn_coap_protocol_set_retransmission_parameters(uint8_t, uint8_t)
 }
 
 // IP6String.h
-uint_fast8_t ip6tos(const void *, char *)
+uint_fast8_t ip6tos(const void *ip6addr, char *p)
 {
+    // Just set at least something there, or the valgrind will scream when
+    // client tries to use the result string.
+    p[0] = '\0';
+    return 0;
 }
 
 //Socket
@@ -411,6 +435,8 @@ int getaddrinfo (const char *__restrict,
             const struct addrinfo *__restrict,
             struct addrinfo **__restrict addr)
 {
+    //*addr = (addrinfo*)malloc(sizeof(addrinfo));
+    //(*addr)->ai_addr = (sockaddr*)malloc(sizeof(sockaddr));
     *addr = common_stub::addrinfo;
     return common_stub::int_value;
 }
@@ -422,57 +448,15 @@ __THROW
 //    free(addr);
 }
 
-const char *inet_ntop (int, const void *, char *, socklen_t)
-__THROW
+const char *inet_ntop (int, const void *__restrict,
+                  char *__restrict, socklen_t)
+     __THROW
 {
     return common_stub::char_value;
 }
 
 int connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 {
-    return common_stub::int2_value;
-}
-
-int setsockopt (int __fd, int __level, int __optname,
-               const void *__optval, socklen_t __optlen)
-    __THROW
-{
-    return common_stub::int_value;
-}
-int inet_pton (int __af, const char *__restrict __cp,
-      void *__restrict __buf) __THROW
-{
     return common_stub::int_value;
 }
 
-/* Create new per-process timer using CLOCK_ID.  */
-extern int timer_create (clockid_t __clock_id,
-             struct sigevent *__restrict __evp,
-             timer_t *__restrict __timerid) __THROW
-{
-    return common_stub::int_value;
-}
-
-/* Delete timer TIMERID.  */
-extern int timer_delete (timer_t __timerid) __THROW
-{
-
-}
-
-/* Set timer TIMERID to VALUE, returning old value in OVALUE.  */
-extern int timer_settime (timer_t __timerid, int __flags,
-              const struct itimerspec *__restrict __value,
-              struct itimerspec *__restrict __ovalue) __THROW
-{
-
-}
-
-/* Get current value of timer TIMERID and store it in VALUE.  */
-extern int timer_gettime (timer_t __timerid, struct itimerspec *__value)
-     __THROW
-{
-    itimerspec timer_spec;
-    timer_spec.it_value.tv_sec = common_stub::int2_value / 1000;
-    timer_spec.it_value.tv_nsec = (common_stub::int2_value % 1000) * 1000000;
-    *__value = timer_spec;
-}

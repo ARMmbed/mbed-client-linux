@@ -9,6 +9,7 @@ TESTDIRS := $(UNITTESTS:%=build-%)
 CLEANTESTDIRS := $(UNITTESTS:%=clean-%)
 COVERAGEFILE := ./lcov/coverage.info
 
+
 LIB = libmbed-client-linux.a
 
 include sources.mk

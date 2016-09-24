@@ -64,7 +64,8 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
         _received_packet_address = NULL;
     }
 
-    if(_socket_server > 0) {
+    if(_socket_server >= 0) {
+        shutdown(_socket_server, SHUT_RDWR);
         close(_socket_server);
         _socket_server = -1;
     }
@@ -405,6 +406,9 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
 void M2MConnectionHandlerPimpl::stop_listening()
 {
     tr_debug("M2MConnectionHandlerPimpl::stop_listening()");
+    if (_socket_server != -1) {
+        shutdown(_socket_server, SHUT_RDWR);
+    }
     _receive_data = false;
 }
 
@@ -433,7 +437,8 @@ bool M2MConnectionHandlerPimpl::resolve_hostname(const char *address,
         hints.ai_family = AF_UNSPEC;
     }
 
-    if(_socket_server > 0) {
+    if(_socket_server >= 0) {
+        shutdown(_socket_server, SHUT_RDWR);
         close(_socket_server);
         _socket_server = -1;
         pthread_join(_listen_thread, NULL);

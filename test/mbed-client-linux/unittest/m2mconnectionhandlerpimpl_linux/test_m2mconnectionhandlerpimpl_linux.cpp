@@ -521,6 +521,10 @@ void Test_M2MConnectionHandlerPimpl_linux::test_stop_listening()
     handler->_receive_data == true;
     handler->stop_listening();
     CHECK(handler->_receive_data == false);
+    handler->_receive_data == true;
+    handler->_socket_server = 0;
+    handler->stop_listening();
+    CHECK(handler->_receive_data == false);
 }
 
 void Test_M2MConnectionHandlerPimpl_linux::test_send_to_socket()

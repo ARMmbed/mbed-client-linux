@@ -473,6 +473,11 @@ int inet_pton (int __af, const char *__restrict __cp,
     return common_stub::int_value;
 }
 
+int shutdown(int sockfdn, int how) __THROW
+{
+    return 0;
+}
+
 /* Create new per-process timer using CLOCK_ID.  */
 extern int timer_create (clockid_t __clock_id,
              struct sigevent *__restrict __evp,

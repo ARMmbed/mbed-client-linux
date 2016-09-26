@@ -85,7 +85,7 @@ void Test_M2MTimerPimpl_linux::test_is_intermediate_interval_passed()
     common_stub::int2_value = 9000;
     CHECK(false == timer->is_intermediate_interval_passed());
     common_stub::int2_value = 5000;
-    CHECK(true == timer->is_intermediate_interval_passed());
+    CHECK(false == timer->is_intermediate_interval_passed());
 }
 
 void Test_M2MTimerPimpl_linux::test_is_total_interval_passed()

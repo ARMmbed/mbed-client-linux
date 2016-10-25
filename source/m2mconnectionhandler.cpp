@@ -15,10 +15,8 @@
  */
 
 #include <sys/types.h>
-#include <netdb.h>
 #include "mbed-client/m2mconnectionhandler.h"
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
-#include "include/connthreadhelper.h"
 #include "mbed-client/m2mconstants.h"
 #include "mbed-client/m2msecurity.h"
 

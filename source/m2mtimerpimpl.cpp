@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 ARM Limited. All rights reserved.
+ * Copyright (c) 2015-2016 ARM Limited. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the License); you may
  * not use this file except in compliance with the License.
@@ -14,14 +14,58 @@
  * limitations under the License.
  */
 
-#include <unistd.h>
+#include <assert.h>
 #include <time.h>
-#include <errno.h>
-#include <signal.h>
+
 #include "mbed-client-linux/m2mtimerpimpl.h"
 #include "mbed-client/m2mtimerobserver.h"
+#include "mbed-client/m2mvector.h"
 
-void expired(union sigval sigval);
+#include "eventOS_event.h"
+#include "eventOS_event_timer.h"
+#include "eventOS_scheduler.h"
+#include "ns_hal_init.h"
+
+#define MBED_CLIENT_TIMER_TASKLET_INIT_EVENT 0 // Tasklet init occurs always when generating a tasklet
+#define MBED_CLIENT_TIMER_EVENT 10
+
+#ifdef MBED_CONF_MBED_CLIENT_EVENT_LOOP_SIZE
+#define MBED_CLIENT_EVENT_LOOP_SIZE MBED_CONF_MBED_CLIENT_EVENT_LOOP_SIZE
+#else
+#define MBED_CLIENT_EVENT_LOOP_SIZE 1024
+#endif
+
+int8_t M2MTimerPimpl::_tasklet_id = -1;
+
+int8_t M2MTimerPimpl::_next_timer_id = 1;
+
+static m2m::Vector<M2MTimerPimpl*> timer_impl_list;
+
+extern "C" void tasklet_func(arm_event_s *event)
+{
+    // skip the init event as there will be a timer event after
+    if (event->event_type == MBED_CLIENT_TIMER_EVENT) {
+        bool timer_found = false;
+        eventOS_scheduler_mutex_wait();
+        int timer_count = timer_impl_list.size();
+        for (int index = 0; index < timer_count; index++) {
+            M2MTimerPimpl* timer = timer_impl_list[index];
+            if (timer->get_timer_id() == event->event_id) {
+                eventOS_scheduler_mutex_release();
+                timer_found = true;
+                if (timer->get_still_left_time() > 0) {
+                    timer->start_still_left_timer();
+                }else {
+                    timer->timer_expired();
+                }
+                break;
+            }
+        }
+        if(!timer_found) {
+            eventOS_scheduler_mutex_release();
+        }
+    }
+}
 
 M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
 : _observer(observer),
@@ -30,126 +74,158 @@ M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
   _type(M2MTimerObserver::Notdefined),
   _intermediate_interval(0),
   _total_interval(0),
-  _total_interval_expired(false)
+  _still_left(0),
+  _status(0),
+  _dtls_type(false)
 {
-    _signal_event.sigev_notify = SIGEV_THREAD;
-    _signal_event.sigev_value.sival_ptr = (void*) this;
-    _signal_event.sigev_notify_function = expired;
-    _signal_event.sigev_notify_attributes = NULL;
+    ns_hal_init(NULL, MBED_CLIENT_EVENT_LOOP_SIZE, NULL, NULL);
+    eventOS_scheduler_mutex_wait();
+    if (_tasklet_id < 0) {
+        _tasklet_id = eventOS_event_handler_create(tasklet_func, MBED_CLIENT_TIMER_TASKLET_INIT_EVENT);
+        assert(_tasklet_id >= 0);
+    }
 
-    _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
+    // XXX: this wraps over quite soon
+    _timer_id = M2MTimerPimpl::_next_timer_id++;
+    timer_impl_list.push_back(this);
+    eventOS_scheduler_mutex_release();
 }
 
 M2MTimerPimpl::~M2MTimerPimpl()
 {
-    if(!_status){
-        timer_delete(_timer_id);
-        _status = -1;
+    // cancel the timer request, if any is pending
+    cancel();
+
+    // there is no turning back, event os does not have eventOS_event_handler_delete() or similar,
+    // so the tasklet is lost forever. Same goes with timer_impl_list, which leaks now memory.
+
+    // remove the timer from object list
+    eventOS_scheduler_mutex_wait();
+    int timer_count = timer_impl_list.size();
+    for (int index = 0; index < timer_count; index++) {
+        const M2MTimerPimpl* timer = timer_impl_list[index];
+        if (timer->get_timer_id() == _timer_id) {
+            timer_impl_list.erase(index);
+            break;
+        }
     }
+    eventOS_scheduler_mutex_release();
 }
 
 void M2MTimerPimpl::start_timer( uint64_t interval,
                                  M2MTimerObserver::Type type,
                                  bool single_shot)
 {
+    _dtls_type = false;
     _intermediate_interval = 0;
-    _total_interval = 0;    
+    _total_interval = 0;
+    _status = 0;
     _single_shot = single_shot;
     _interval = interval;
     _type = type;
+    _still_left = 0;
     start();
 }
 
 void M2MTimerPimpl::start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type)
 {
-    _total_interval_expired = false;
+    _dtls_type = true;
     _intermediate_interval = intermediate_interval;
     _total_interval = total_interval;
-    _interval = total_interval;
+    _interval = _intermediate_interval;
+    _status = 0;
+    _single_shot = false;
     _type = type;
     start();
 }
 
+void M2MTimerPimpl::start()
+{
+    int status;
+    if(_interval > INT32_MAX) {
+        _still_left = _interval - INT32_MAX;
+        status = eventOS_event_timer_request(_timer_id, MBED_CLIENT_TIMER_EVENT,
+                                            M2MTimerPimpl::_tasklet_id,
+                                            INT32_MAX);
+    }
+    else {
+        status = eventOS_event_timer_request(_timer_id, MBED_CLIENT_TIMER_EVENT,
+                                            M2MTimerPimpl::_tasklet_id,
+                                            _interval);
+    }
+    assert(status == 0);
+}
+
+void M2MTimerPimpl::cancel()
+{
+    eventOS_event_timer_cancel(_timer_id, M2MTimerPimpl::_tasklet_id);
+}
+
 void M2MTimerPimpl::stop_timer()
 {
-    if (!_status) {
-
-        _timer_specs.it_interval.tv_sec = 0;
-        _timer_specs.it_interval.tv_nsec = 0;
-        _timer_specs.it_value.tv_sec = 0;
-        _timer_specs.it_value.tv_nsec = 0;
-
-        timer_settime(_timer_id, 0, &_timer_specs, NULL);
-
-    }
+    _interval = 0;
+    _single_shot = true;
+    _still_left = 0;
+    cancel();
 }
 
 void M2MTimerPimpl::timer_expired()
 {
-    if (M2MTimerObserver::Dtls == _type) {
-        _total_interval_expired = true;
-    }
+    _status++;
     _observer.timer_expired(_type);
-    if(!_single_shot) {
-        start_timer(_interval, _type, false);
+
+    if ((!_dtls_type) && (!_single_shot)) {
+        // start next round of periodic timer
+        start();
+    } else if ((_dtls_type) && (!is_total_interval_passed())) {
+        // if only the intermediate time has passed, we need still wait up to total time
+        _interval = _total_interval - _intermediate_interval;
+        start();
     }
-}
-
-void M2MTimerPimpl::start()
-{
-
-    if(_status){
-        _status = timer_create(CLOCK_MONOTONIC, &_signal_event, &_timer_id);
-    }
-
-    if(!_status)
-    {
-
-        stop_timer();
-
-        _timer_specs.it_value.tv_sec = _interval / 1000;
-        _timer_specs.it_value.tv_nsec = (_interval % 1000) * 1000000;
-        _timer_specs.it_interval.tv_sec = 0;
-        _timer_specs.it_interval.tv_nsec = 0;
-
-        if (!_single_shot) {
-            _timer_specs.it_interval.tv_sec = _interval / 1000;
-            _timer_specs.it_interval.tv_nsec = (_interval % 1000) * 1000000;
-        }
-
-        timer_settime(_timer_id, 0, &_timer_specs, NULL);
-
-    }
-
-}
-
-bool M2MTimerPimpl::is_total_interval_passed()
-{
-    return _total_interval_expired;
 }
 
 bool M2MTimerPimpl::is_intermediate_interval_passed()
 {
-    itimerspec timer_spec;
-    if (!_status) {
-        timer_gettime(_timer_id, &timer_spec);
-        timer_settime(_timer_id, 0, &timer_spec, NULL);
-
-        uint64_t trigger = _total_interval - _intermediate_interval;
-        uint64_t remaining = (timer_spec.it_value.tv_sec  * 1000) +
-                (timer_spec.it_value.tv_nsec / 1000000);
-
-        if (remaining <= trigger) {
-            return true;
-        }
+    if (_status > 0) {
+        return true;
     }
     return false;
 }
 
-void expired(union sigval sigval)
+bool M2MTimerPimpl::is_total_interval_passed()
 {
-    M2MTimerPimpl * timer = reinterpret_cast<M2MTimerPimpl *> (sigval.sival_ptr);
-    if (timer) {
-        timer->timer_expired();
+    if (_status > 1) {
+        return true;
+    }
+    return false;
+}
+
+uint64_t M2MTimerPimpl::get_still_left_time() const
+{
+   return _still_left;
+}
+
+void M2MTimerPimpl::start_still_left_timer()
+{
+    if (_still_left > 0) {
+        int status;
+        if( _still_left > INT32_MAX) {
+            _still_left = _still_left - INT32_MAX;
+            status = eventOS_event_timer_request(_timer_id, MBED_CLIENT_TIMER_EVENT,
+                                                M2MTimerPimpl::_tasklet_id,
+                                                INT32_MAX);
+        }
+        else {
+            status = eventOS_event_timer_request(_timer_id, MBED_CLIENT_TIMER_EVENT,
+                                                M2MTimerPimpl::_tasklet_id,
+                                                _still_left);
+            _still_left = 0;
+        }
+        assert(status == 0);
+    } else {
+        _observer.timer_expired(_type);
+        if(!_single_shot) {
+            start_timer(_interval, _type, _single_shot);
+        }
     }
 }

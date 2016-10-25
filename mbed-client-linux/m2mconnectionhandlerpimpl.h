@@ -13,32 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef M2M_CONNECTION_HANDLER_PIMPL_H__
 #define M2M_CONNECTION_HANDLER_PIMPL_H__
 
+#include <sys/socket.h>
+#include "ns_types.h"
 #include "mbed-client/m2mconfig.h"
+#include "mbed-client/m2mconstants.h"
 #include "mbed-client/m2minterface.h"
 #include "mbed-client/m2mconnectionobserver.h"
 #include "mbed-client/m2mconnectionsecurity.h"
-#include "mbed-client/m2mconstants.h"
 #include "nsdl-c/sn_nsdl.h"
 
-#include <pthread.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <signal.h> /* For SIGIGN and SIGINT */
-#include <unistd.h>
-#include <errno.h>
 
+
+class M2MConnectionSecurity;
 class M2MConnectionHandler;
+class M2MSecurity;
+
+/**
+ * @brief M2MConnectionHandlerPimpl.
+ * This class handles the socket connection for LWM2M Client
+ */
+
 
 class M2MConnectionHandlerPimpl {
 public:
+
+    enum SocketEvent {
+        ESocketIdle         = 0x00,
+        ESocketReadytoRead  = 0x02,
+        ESocketDnsHandler   = 0x04,
+        ESocketSend         = 0x08
+    };
+
+    struct TaskIdentifier {
+        M2MConnectionHandlerPimpl *pimpl;
+        void                      *data_ptr;
+    };
 
     /**
     * @brief Constructor
@@ -53,10 +65,12 @@ public:
     */
     ~M2MConnectionHandlerPimpl();
 
+    void start_timer(void);
+
     /**
     * @brief This binds the socket connection.
     * @param listen_port Port to listen for incoming connection.
-    * @return true if successfulelse false.
+    * @return true if successful else false.
     */
     bool bind_connection(const uint16_t listen_port);
 
@@ -66,7 +80,7 @@ public:
     * @param String server address.
     * @param uint16_t Server port.
     * @param ServerType, Server Type to be resolved.
-    * @return True if address is valid, else false.
+    * @return true if address is valid else false.
     */
     bool resolve_server_address(const String& server_address,
                                 const uint16_t server_port,
@@ -102,11 +116,13 @@ public:
     int send_to_socket(const unsigned char *buf, size_t len);
 
     /**
-     * @brief receive_from_socket Receives directly from a socket. This
-     * is used by security classes to receive raw data to be decrypted.
-     * @param buf Buffer to send
-     * @param len Length of a buffer
-     * @return Number of bytes read or -1 if failed.
+     * \brief Receives directly from the socket. This
+     * is used by the security classes to receive raw data to be decrypted.
+     * \param buf Buffer to send.
+     * \param len The length of the buffer.
+     * \param timeout Timeout defined from DTLS to wait for blocking receive calls
+     * before timing out, by default value is 0.
+     * \return Number of bytes read or negative number if failed.
      */
     int receive_from_socket(unsigned char *buf, size_t len);
 
@@ -116,47 +132,118 @@ public:
     */
     void handle_connection_error(int error);
 
-public:
+    /**
+     * \brief Sets the network interface handler that is used by client to connect
+     * to a network over IP..
+     * \param handler A network interface handler that is used by client to connect.
+     *  This API is optional but provides a mechanism for different platforms to
+     * manage usage of underlying network interface by client.
+     */
+    void set_platform_network_handler(void *handler = NULL);
 
-    void data_receive(void *object);
+    /**
+    * \brief Claims mutex to prevent thread clashes
+    * in multithreaded environment.
+    */
+    void claim_mutex();
+
+    /**
+    * \brief Releases mutex to prevent thread clashes
+    * in multithreaded environment.
+    */
+    void release_mutex();
+
+    /**
+    * @brief Callback handler for sending data over socket.
+    */
+    void send_handler();
+
+    /**
+    * @brief Callback handler for receiving data over socket.
+    */
+    void receive_handler();
+
+    /**
+    * @brief Callback handler for receiving data for secured connection.
+    */
+    void receive_handshake_handler();
+
+    /**
+    * @brief Returns true if DTLS handshake is still ongoing.
+    */
+    bool is_handshake_ongoing();
+
+    /**
+    * @brief Returns connection handler tasklet ID.
+    */
+    int8_t connection_tasklet_handler();
+
+    /**
+    * @brief Handles DNS resolving through event loop.
+    */
+    void dns_handler();
+
+    /**
+    * @brief Sends data to socket through event loop.
+    */
+    void send_socket_data(uint8_t *data, uint16_t data_len);
+
+    void send_receive_event(void);
+
+    /**
+    * @brief Socket listener
+    */
+    void socket_listener();
 
 private:
 
-    int bind_socket();
+    /**
+    * @brief Initialize mbed OS socket
+    */
+    bool init_socket();
 
-    bool resolve_hostname(const char* address, const uint16_t server_port);
-
-    void create_socket();
-
+    /**
+    * @brief Check socket type
+    * @return True if TCP connection otherwise false
+    */
     bool is_tcp_connection();
 
+    /**
+    * @brief Close and delete socket
+    */
+    void close_socket();
+
+    /**
+    * @brief Enables keepalive for TCP connections.
+    */
+    void enable_keepalive();
+
 private:
-    M2MConnectionHandler                    *_base;
-    M2MConnectionObserver                   &_observer;
-    M2MConnectionSecurity                   *_security_impl; //owned
-    bool                                    _use_secure_connection;
-    String                                  _server_address;
-    char                                    _receive_buffer[BUFFER_LENGTH];
-    uint8_t                                 _resolved_address[INET6_ADDRSTRLEN];
-    M2MInterface::BindingMode               _binding_mode;
-    M2MInterface::NetworkStack              _stack;
-    uint8_t                                 _received_address[INET6_ADDRSTRLEN];
-    M2MConnectionObserver::SocketAddress    *_received_packet_address;
-    int                                     _socket_server;
-    struct sockaddr_in                      _sa_dst;
-    struct sockaddr_in                      _sa_src;
-    struct sockaddr_in6                     _sa_dst6;
-    struct sockaddr_in6                     _sa_src6;
-    int                                     _slen_sa_dst;
-    int                                     _slen_sa_dst6;
-    uint8_t                                 _received_buffer[BUFFER_LENGTH];
-    pthread_t                               _listen_thread; /* Thread for Listen data function */
-    volatile bool                           _receive_data;
-    uint16_t                                _listen_port;
+    M2MConnectionHandler                        *_base;
+    M2MConnectionObserver                       &_observer;
+    M2MConnectionSecurity                       *_security_impl; //owned
+    const M2MSecurity                           *_security; //non-owned
+    bool                                        _use_secure_connection;
+    M2MInterface::BindingMode                   _binding_mode;
+    M2MInterface::NetworkStack                  _network_stack;
+    M2MConnectionObserver::SocketAddress        _address;
+    int                                         _socket;
+    bool                                        _is_handshaking;
+    bool                                        _listening;
+    M2MConnectionObserver::ServerType           _server_type;
+    uint16_t                                    _server_port;
+    uint16_t                                    _listen_port;
+    bool                                        _running;
+    unsigned char                               _recv_buffer[BUFFER_LENGTH];
+    uint32_t                                    _net_iface;
+    struct sockaddr_storage                     _socket_address;
+    socklen_t                                   _socket_address_len;
+    static int8_t                               _tasklet_id;
+    String                                      _server_address;
 
 friend class Test_M2MConnectionHandlerPimpl;
-friend class Test_M2MConnectionHandlerPimpl_linux;
+friend class Test_M2MConnectionHandlerPimpl_mbed;
 friend class M2MConnection_TestObserver;
 };
-#endif //M2M_CONNECTION_HANDLER_PIMPL_H__
 
+#endif //M2M_CONNECTION_HANDLER_PIMPL_H__

@@ -17,34 +17,28 @@
 #ifndef M2M_TIMER_PIMPL_H__
 #define M2M_TIMER_PIMPL_H__
 
-#include <stdint.h>
-#include <signal.h>
-#include <time.h>
-#include <pthread.h>
-#include <stdint.h>
-#include <string.h>
-
+#include "ns_types.h"
 #include "mbed-client/m2mtimerobserver.h"
 
 class M2MTimerPimpl {
+private:
 
+    // Prevents the use of assignment operator
+    M2MTimerPimpl& operator=(const M2MTimerPimpl& other);
+
+    // Prevents the use of copy constructor
+    M2MTimerPimpl(const M2MTimerPimpl& other);
 public:
+
     /**
-    * Constructor.
-    */
+     * Constructor.
+     */
     M2MTimerPimpl(M2MTimerObserver& _observer);
 
     /**
-    * Destructor.
-    */
+     * Destructor.
+     */
     virtual ~M2MTimerPimpl();
-
-    /**
-    * Callback function for timer completion.
-    */
-    void timer_expired();
-
-private:
 
     /**
      * Starts timer
@@ -69,6 +63,11 @@ private:
     void stop_timer();
 
     /**
+     * Callback function for timer completion.
+     */
+    void timer_expired();
+
+    /**
      * @brief Checks if the intermediate interval has passed
      * @return true if interval has passed, false otherwise
      */
@@ -81,25 +80,53 @@ private:
     bool is_total_interval_passed();
 
     /**
-     * @brief Start the timer
+     * @brief Start long period timer
      */
-    void start();
+    void start_still_left_timer();
+
+    /**
+     * @brief Get timer id
+     * @return Timer id
+     */
+    inline int8_t get_timer_id() const;
+
+    /**
+     * @brief Get still left time
+     * @return Time left in milliseconds
+     */
+    uint64_t get_still_left_time() const;
 
 private:
-    M2MTimerObserver&       _observer;
-    int                     _status;
-    bool                    _single_shot;
-    uint64_t                _interval;
+
+    void start();
+    void cancel();
+
+private:
+    M2MTimerObserver&   _observer;
+    bool                _single_shot;
+    uint64_t            _interval;
     M2MTimerObserver::Type  _type;
-    uint64_t                _intermediate_interval;
-    uint64_t                _total_interval;
-    timer_t                 _timer_id;
-    struct sigevent         _signal_event;
-    struct itimerspec       _timer_specs;
-    bool                    _total_interval_expired;
+
+    uint64_t            _intermediate_interval;
+    uint64_t            _total_interval;
+    uint64_t            _still_left;
+    uint8_t             _status;
+    bool                _dtls_type;
+
+    // this is the timer-id of this object, used to map the
+    // timer event callback to the correct object.
+    int8_t              _timer_id;
+
+    static int8_t       _tasklet_id;
+    static int8_t       _next_timer_id;
 
     friend class M2MTimer;
-    friend class Test_M2MTimerPimpl_linux;
 };
 
+inline int8_t M2MTimerPimpl::get_timer_id() const
+{
+    return _timer_id;
+}
+
 #endif //M2M_TIMER_PIMPL_H__
+

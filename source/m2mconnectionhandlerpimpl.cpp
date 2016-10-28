@@ -22,6 +22,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/tcp.h>
+#include <semaphore.h>
+#include <assert.h>
 
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
 #include "mbed-client/m2mconnectionobserver.h"
@@ -39,6 +41,7 @@
 int8_t M2MConnectionHandlerPimpl::_tasklet_id = -1;
 
 static M2MConnectionHandlerPimpl *connection_handler = NULL;
+static sem_t socket_event_handled;
 
 pthread_t socket_listener_thread;
 void* __listener_thread(void*)
@@ -60,7 +63,7 @@ extern "C" void connection_event_handler(arm_event_s *event)
         case M2MConnectionHandlerPimpl::ESocketReadytoRead:
 
             connection_handler->receive_handler();
-            pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
+            sem_post(&socket_event_handled);
             break;
 
         case M2MConnectionHandlerPimpl::ESocketSend:
@@ -121,6 +124,9 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
 
     connection_handler = this;
 
+    int err = sem_init(&socket_event_handled, 0, 1);
+    assert(err == 0);
+
     eventOS_scheduler_mutex_wait();
     if (M2MConnectionHandlerPimpl::_tasklet_id == -1) {
         M2MConnectionHandlerPimpl::_tasklet_id = eventOS_event_handler_create(&connection_event_handler, ESocketIdle);
@@ -131,7 +137,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
 
 void M2MConnectionHandlerPimpl::socket_listener()
 {
-    //while (_socket != -1) {
+    while (_listening) {
         int sock = _socket;
         ssize_t err;
         fd_set read_set;
@@ -144,15 +150,17 @@ void M2MConnectionHandlerPimpl::socket_listener()
 
         if (FD_ISSET(sock, &read_set)) {
             send_receive_event();
+            sem_wait(&socket_event_handled);
         }
-    //}
-    //tr_info("Socket listener stopped");
+    }
 }
 
 M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 {
     tr_debug("~M2MConnectionHandlerPimpl()");
+
     stop_listening();
+    sem_destroy(&socket_event_handled);
 
     close_socket();
 
@@ -289,7 +297,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
         return;
     }
 
-    pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
+    start_listening_for_data();
     _running = true;
 
     if (_security) {
@@ -430,6 +438,7 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
     tr_debug("start_listening_for_data()");
 
     _listening = true;
+    pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
 
     return true;
 
@@ -441,6 +450,7 @@ void M2MConnectionHandlerPimpl::stop_listening()
     tr_debug("stop_listening()");
 
     _listening = false;
+    pthread_join(socket_listener_thread, NULL);
 
     if(_security_impl) {
         _security_impl->reset();

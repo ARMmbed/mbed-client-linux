@@ -730,7 +730,6 @@ bool M2MConnectionHandlerPimpl::init_socket()
     _socket = socket(domain, socket_type | O_NONBLOCK, socket_protocol);
 
     if(_socket == -1) {
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT);
         return false;
     }
 
@@ -754,7 +753,6 @@ bool M2MConnectionHandlerPimpl::init_socket()
     }
 
     if(status == -1) {
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT);
         return false;
     }
 

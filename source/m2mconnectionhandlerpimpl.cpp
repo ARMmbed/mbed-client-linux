@@ -251,8 +251,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
         while(addr_info) {
             close_socket();
             if(!init_socket()) {
-                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT);
-                return;
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - init socket fail");
+                break;
             }
             // Load socket address from result entry
             memset(&_socket_address, 0, sizeof(struct sockaddr_storage));

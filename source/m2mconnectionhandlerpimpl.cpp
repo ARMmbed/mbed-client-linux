@@ -156,6 +156,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
 
         if (FD_ISSET(fd_stop_read, &read_set)) {
             // We were signaled to stop reading so quit
+            tr_debug("socket_listener() - got signal, stopping");
             break;
         }
 
@@ -222,6 +223,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
     bool success = false;
+    tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
 
     memset(&_hints, 0, sizeof(struct addrinfo));
     if(_network_stack == M2MInterface::LwIP_IPv4 ||
@@ -272,10 +274,10 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     _address._address = &sin->sin_addr;
                     if (connect(_socket, (const struct sockaddr *)&_socket_address, _socket_address_len) != 0) {
                         success = false;
-                        tr_error("M2MConnectionHandlerPimpl::resolve_hostname - failed to connect %s, %s", ip_address, strerror(errno));
+                        tr_error("M2MConnectionHandlerPimpl::dns_handler - failed to connect %s, %s", ip_address, strerror(errno));
                     } else {
                         success = true;
-                        tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - connected to %s\n", ip_address);
+                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - connected to %s\n", ip_address);
                     }
                     break;
                 }
@@ -291,10 +293,10 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     _address._address = &sin6->sin6_addr;
                     if (connect(_socket, (const struct sockaddr *)&_socket_address, _socket_address_len) != 0) {
                         success = false;
-                        tr_error("M2MConnectionHandlerPimpl::resolve_hostname - failed to connect %s, %s", ip_address, strerror(errno));
+                        tr_error("M2MConnectionHandlerPimpl::dns_handler - failed to connect %s, %s", ip_address, strerror(errno));
                     } else {
                         success = true;
-                        tr_debug("M2MConnectionHandlerPimpl::resolve_hostname - connected to %s\n", ip_address);
+                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - connected to %s\n", ip_address);
                     }
                     break;
                 }
@@ -309,9 +311,10 @@ void M2MConnectionHandlerPimpl::dns_handler()
     freeaddrinfo(addr_info);
 
     if (!success) {
-        tr_error("M2MConnectionHandlerPimpl::resolve_hostname - No connection");
+        tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
         _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, false);
         close_socket();
+        tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
         return;
     }
 
@@ -326,24 +329,27 @@ void M2MConnectionHandlerPimpl::dns_handler()
                 _security_impl->reset();
                 if (_security_impl->init(_security) == 0) {
                     _is_handshaking = true;
-                    tr_debug("resolve_server_address - connect DTLS");
+                    tr_debug("dns_handler - connect DTLS");
                     if(_security_impl->start_connecting_non_blocking(_base) < 0 ){
                         tr_debug("dns_handler - handshake failed");
                         _is_handshaking = false;
                         _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR);
                         close_socket();
+                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                         return;
                     }
                 } else {
-                    tr_error("resolve_server_address - init failed");
+                    tr_error("dns_handler - init failed");
                     _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, false);
                     close_socket();
+                    tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                     return;
                 }
             } else {
                 tr_error("dns_handler - sec is null");
                 _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, false);
                 close_socket();
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                 return;
             }
         }
@@ -354,6 +360,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
                                 _server_type,
                                 _address._port);
     }
+    tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
 }
 
 bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
@@ -486,6 +493,7 @@ void M2MConnectionHandlerPimpl::stop_listening()
 
     // write to stop pipe to signal listening thread to stop
     if (fd_stop_write >= 0) {
+        tr_debug("stop_listening() - signaling listener");
         ssize_t s = write(fd_stop_write, "\0", 1);
         (void)s;
         close(fd_stop_write);

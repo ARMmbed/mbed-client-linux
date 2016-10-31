@@ -223,6 +223,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
     bool success = false;
+    bool retry = false;
     tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
 
     memset(&_hints, 0, sizeof(struct addrinfo));
@@ -254,6 +255,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
             close_socket();
             if(!init_socket()) {
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - init socket fail");
+                retry = true;
                 break;
             }
             // Load socket address from result entry
@@ -312,15 +314,16 @@ void M2MConnectionHandlerPimpl::dns_handler()
 
     if (!success) {
         tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, false);
+        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
         close_socket();
         tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
         return;
     }
 
-    start_listening_for_data();
     _running = true;
 
+    success = true;
+    retry = false;
     if (_security) {
         if (_security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Certificate ||
             _security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Psk) {
@@ -333,26 +336,28 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     if(_security_impl->start_connecting_non_blocking(_base) < 0 ){
                         tr_debug("dns_handler - handshake failed");
                         _is_handshaking = false;
-                        _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR);
-                        close_socket();
-                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
-                        return;
+                        success = false;
+                        retry = true;
                     }
                 } else {
                     tr_error("dns_handler - init failed");
-                    _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, false);
-                    close_socket();
-                    tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
-                    return;
+                    success = false;
+                    retry = false;
                 }
             } else {
                 tr_error("dns_handler - sec is null");
-                _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, false);
+                success = false;
+                retry = false;
+            }
+
+            if (!success) {
+                _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, retry);
                 close_socket();
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                 return;
             }
         }
+
     }
     if(!_is_handshaking) {
         enable_keepalive();

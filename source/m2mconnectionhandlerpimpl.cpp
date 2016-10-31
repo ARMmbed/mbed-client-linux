@@ -731,10 +731,12 @@ bool M2MConnectionHandlerPimpl::init_socket()
     }
 
     tr_debug("init_socket - port %d", _listen_port);
+    tr_debug("init_socket - domain %d, type %d, proto %d", domain, socket_type, socket_protocol);
 
     _socket = socket(domain, socket_type | O_NONBLOCK, socket_protocol);
 
     if(_socket == -1) {
+        tr_debug("init_socket - socket fail");
         return false;
     }
 
@@ -758,6 +760,7 @@ bool M2MConnectionHandlerPimpl::init_socket()
     }
 
     if(status == -1) {
+        tr_debug("init_socket - bind fail");
         return false;
     }
 

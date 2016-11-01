@@ -141,7 +141,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
 void M2MConnectionHandlerPimpl::socket_listener()
 {
     tr_debug("socket_listener() - started id = %p", (void*)pthread_self());
-    while (_listening && _socket) {
+    while (_running && _socket) {
         int sock = _socket;
         fd_set read_set;
         FD_ZERO(&read_set);
@@ -323,7 +323,6 @@ void M2MConnectionHandlerPimpl::dns_handler()
     }
 
     _running = true;
-    _listening = true;
     setup_listener_thread();
 
     success = true;

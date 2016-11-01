@@ -419,7 +419,7 @@ void M2MConnectionHandlerPimpl::send_socket_data(uint8_t *data, uint16_t data_le
     }
 
 
-    tr_debug("send_handler()");
+    tr_debug("send_handler() - IN");
 
     if( _use_secure_connection ){
         if( _security_impl->send_message(data, data_len) > 0){
@@ -427,6 +427,7 @@ void M2MConnectionHandlerPimpl::send_socket_data(uint8_t *data, uint16_t data_le
         }
     } else {
 
+        tr_debug("send_handler() - sending to socket=%d", _socket);
         if(is_tcp_connection()){
             //We need to "shim" the length in front
             uint16_t d_len = data_len+4;

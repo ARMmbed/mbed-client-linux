@@ -323,6 +323,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
     }
 
     _running = true;
+    _listening = true;
     setup_listener_thread();
 
     success = true;

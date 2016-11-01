@@ -363,6 +363,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
 
     }
     if(!_is_handshaking) {
+        tr_debug("M2MConnectionHandlerPimpl::dns_handler - address_ready");
         enable_keepalive();
         _observer.address_ready(_address,
                                 _server_type,
@@ -766,10 +767,11 @@ bool M2MConnectionHandlerPimpl::is_tcp_connection()
 void M2MConnectionHandlerPimpl::close_socket()
 {
     tr_debug("close_socket() - IN");
-    if(_running) {
+    if(_running && _socket >= 0) {
        _running = false;
        shutdown(_socket, SHUT_RDWR);
        close(_socket);
+       _socket = -1;
     }
     tr_debug("close_socket() - OUT");
 }

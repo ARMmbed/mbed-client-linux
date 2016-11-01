@@ -51,6 +51,7 @@ void* __listener_thread(void*)
     if (connection_handler) {
         connection_handler->socket_listener();
     }
+    return 0;
 }
 
 extern "C" void connection_event_handler(arm_event_s *event)
@@ -141,9 +142,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
 {
     while (_listening && _socket) {
         int sock = _socket;
-        ssize_t err;
         fd_set read_set;
-        int8_t input[1];
         FD_ZERO(&read_set);
         // Add socket to read set
         FD_SET(sock, &read_set);
@@ -559,7 +558,7 @@ void M2MConnectionHandlerPimpl::handle_connection_error(int error)
 
 void M2MConnectionHandlerPimpl::set_platform_network_handler(void *handler)
 {
-
+    (void)handler;
 }
 
 void M2MConnectionHandlerPimpl::receive_handshake_handler()
@@ -702,7 +701,8 @@ bool M2MConnectionHandlerPimpl::init_socket()
     int socket_protocol = IPPROTO_UDP;
     int status;
     int domain;
-    struct sockaddr_storage bind_address = {0};
+    struct sockaddr_storage bind_address;
+    memset(&bind_address, 0, sizeof(struct sockaddr_storage));
 
     if(is_tcp_connection())
     {

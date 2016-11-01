@@ -140,6 +140,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
 
 void M2MConnectionHandlerPimpl::socket_listener()
 {
+    tr_debug("socket_listener() - started id = %p", (void*)pthread_self());
     while (_listening && _socket) {
         int sock = _socket;
         fd_set read_set;
@@ -167,6 +168,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
     }
 
     // Close socket if it wasn't already closed
+    tr_debug("socket_listener() - close socket by id=%p, _listening=%d, _socket=%d", (void*)pthread_self(), _listening, _socket);
     close_socket();
 
     // Cleanup stop pipe handler
@@ -174,7 +176,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
         close(fd_stop_read);
         fd_stop_read = -1;
     }
-    tr_debug("M2MConnectionHandlerPimpl - listener finished");
+    tr_debug("M2MConnectionHandlerPimpl - listener finished, id = %p", (void*)pthread_self());
 }
 
 M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
@@ -251,6 +253,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
     if (status == 0 && addr_info) {
         char ip_address[INET6_ADDRSTRLEN];
         while(addr_info) {
+            tr_debug("M2MConnectionHandlerPimpl::dns_handler - new address");
             close_socket();
             if(!init_socket()) {
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - init socket fail");

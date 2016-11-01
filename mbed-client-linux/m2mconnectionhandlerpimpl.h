@@ -221,7 +221,7 @@ private:
     /**
      * @brief Initialize the listening thread and pipe used to signal it to stop
      */
-    void setup_listener_thread();
+    bool setup_listener_thread();
 
 private:
     M2MConnectionHandler                        *_base;

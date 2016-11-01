@@ -313,7 +313,13 @@ void M2MConnectionHandlerPimpl::dns_handler()
     }
 
     _running = true;
-    setup_listener_thread();
+    if (!setup_listener_thread()) {
+        _running = false;
+        close_socket();
+        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+        tr_debug("M2MConnectionHandlerPimpl::dns_handler - listener thread error %s");
+        return;
+    }
 
     success = true;
     retry = false;
@@ -463,7 +469,6 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
     tr_debug("start_listening_for_data()");
 
     _listening = true;
-    _running = true;
 
     return true;
 
@@ -487,6 +492,7 @@ void M2MConnectionHandlerPimpl::stop_listening()
 
     sem_post(&socket_event_handled);
     pthread_join(socket_listener_thread, NULL);
+    _running = false;
 
     // Close the socket
     close_socket();
@@ -701,7 +707,6 @@ bool M2MConnectionHandlerPimpl::init_socket()
 {
     tr_debug("init_socket - IN");
     _is_handshaking = false;
-    _running = true;
     int socket_type = SOCK_DGRAM;
     int socket_protocol = IPPROTO_UDP;
     int status;
@@ -777,7 +782,7 @@ void M2MConnectionHandlerPimpl::close_socket()
     tr_debug("close_socket() - OUT");
 }
 
-void M2MConnectionHandlerPimpl::setup_listener_thread()
+bool M2MConnectionHandlerPimpl::setup_listener_thread()
 {
     // Prepare a pipe for signaling listening thread when we want to stop
     if (fd_stop_write < 0 && fd_stop_read < 0) {
@@ -793,7 +798,13 @@ void M2MConnectionHandlerPimpl::setup_listener_thread()
         perror("Stop pipe was already created!");
     }
 
-    pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
+    int error = pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
+    if (error == 0) {
+        return true;
+    }
+
+    tr_error("M2MConnectionHandlerPimpl::setup_listener_thread() - couldn't create thread, error %d", error);
+    return false;
 }
 
 void M2MConnectionHandlerPimpl::enable_keepalive()

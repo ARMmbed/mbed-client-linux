@@ -166,16 +166,6 @@ void M2MConnectionHandlerPimpl::socket_listener()
             sem_wait(&socket_event_handled);
         }
     }
-
-    // Close socket if it wasn't already closed
-    tr_debug("socket_listener() - close socket by id=%p, _listening=%d, _socket=%d", (void*)pthread_self(), _listening, _socket);
-    close_socket();
-
-    // Cleanup stop pipe handler
-    if (fd_stop_read >= 0) {
-        close(fd_stop_read);
-        fd_stop_read = -1;
-    }
     tr_debug("M2MConnectionHandlerPimpl - listener finished, id = %p", (void*)pthread_self());
 }
 
@@ -498,6 +488,16 @@ void M2MConnectionHandlerPimpl::stop_listening()
     sem_post(&socket_event_handled);
     pthread_join(socket_listener_thread, NULL);
 
+    // Close the socket
+    close_socket();
+
+    // Cleanup stop pipe handler
+    if (fd_stop_read >= 0) {
+        close(fd_stop_read);
+        fd_stop_read = -1;
+    }
+
+    // Reset security
     if(_security_impl) {
         _security_impl->reset();
     }

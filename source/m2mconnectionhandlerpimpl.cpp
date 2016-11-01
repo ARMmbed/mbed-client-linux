@@ -314,8 +314,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
 
     if (!success) {
         tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
         close_socket();
+        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
         tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
         return;
     }
@@ -352,8 +352,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
             }
 
             if (!success) {
-                _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, retry);
                 close_socket();
+                _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, retry);
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                 return;
             }
@@ -452,9 +452,9 @@ void M2MConnectionHandlerPimpl::send_socket_data(uint8_t *data, uint16_t data_le
     }
 
     if (!success) {
+        close_socket();
         tr_error("M2MConnectionHandlerPimpl::send_socket_data - sendto error: %s", strerror(error));
         _observer.socket_error(M2MConnectionHandler::SOCKET_SEND_ERROR, true);
-        close_socket();
     }
     else{
         _observer.data_sent();
@@ -580,8 +580,8 @@ void M2MConnectionHandlerPimpl::receive_handshake_handler()
                                     _server_port);
         }else if( ret < 0 ){
             _is_handshaking = false;
-            _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, true);
             close_socket();
+            _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, true);
         }
     }
 }
@@ -620,8 +620,8 @@ void M2MConnectionHandlerPimpl::receive_handler()
 
             } else if (M2MConnectionHandler::CONNECTION_ERROR_WANTS_READ != rcv_size && rcv_size < 0) {
 
-                _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                 close_socket();
+                _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                 return;
 
             }
@@ -641,8 +641,8 @@ void M2MConnectionHandlerPimpl::receive_handler()
             }
             else if (recv_size <= 0) {
 
-                _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                 close_socket();
+                _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                 return;
 
             }
@@ -658,8 +658,8 @@ void M2MConnectionHandlerPimpl::receive_handler()
 
                 if( recv_size < 4 ){
 
-                    _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                     close_socket();
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_READ_ERROR, true);
                     return;
 
                 }

@@ -730,13 +730,13 @@ bool M2MConnectionHandlerPimpl::init_socket()
         struct sockaddr_in* sin = (sockaddr_in*)&bind_address;
         sin->sin_family = AF_INET;
         sin->sin_port = htons(_listen_port);
-        memset(&(sin->sin_addr), 0, sizeof(struct in_addr));
+        sin->sin_addr.s_addr = INADDR_ANY;
     }
     else if(_network_stack == M2MInterface::LwIP_IPv6){
         struct sockaddr_in6* sin6 = (sockaddr_in6*)&bind_address;
         sin6->sin6_family = AF_INET6;
         sin6->sin6_port = htons(_listen_port);
-        memset(&(sin6->sin6_addr), 0, sizeof(struct in6_addr));
+        sin6->sin6_addr = in6addr_any;
     }
 
     if(_network_stack == M2MInterface::LwIP_IPv4){

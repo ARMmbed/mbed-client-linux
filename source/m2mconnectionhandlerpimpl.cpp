@@ -482,7 +482,7 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
 void M2MConnectionHandlerPimpl::stop_listening()
 {
 
-    tr_debug("stop_listening()");
+    tr_debug("stop_listening() - thread id = %p", socket_listener_thread);
 
     _listening = false;
 

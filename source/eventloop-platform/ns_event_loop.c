@@ -46,19 +46,13 @@ uint8_t eventOS_scheduler_mutex_is_owner(void)
 
 void eventOS_scheduler_signal(void)
 {
-    // XXX why does signal set lock if called with irqs disabled?
-    //__enable_irq();
-    //tr_debug("signal %p", (void*)event_thread_id);
     int err = sem_post(&event_signal_sema_id);
     assert(err == 0);
-    //tr_debug("signalled %p", (void*)event_thread_id);
 }
 
 void eventOS_scheduler_idle(void)
 {
-    //tr_debug("idle");
     eventOS_scheduler_mutex_release();
-    int32_t counters = 0;
     int err = sem_wait(&event_signal_sema_id);
     assert(err == 0);
     eventOS_scheduler_mutex_wait();
@@ -67,8 +61,6 @@ void eventOS_scheduler_idle(void)
 static void* event_loop_thread(void *arg)
 {
     tr_debug("event_loop_thread create");
-    int32_t counters = 0;
-    // TODO: Check error?
     int err = sem_wait(&event_start_sema_id);
     assert(err == 0);
     eventOS_scheduler_mutex_wait();
@@ -81,7 +73,6 @@ static void* event_loop_thread(void *arg)
 void ns_event_loop_thread_create(void)
 {
     int err = 0;
-    int32_t counters = 0;
     err = sem_init(&event_start_sema_id, 0, 1);
     assert(err == 0);
     err = sem_wait(&event_start_sema_id);

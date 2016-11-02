@@ -39,17 +39,18 @@ int8_t M2MTimerPimpl::_tasklet_id = -1;
 
 int8_t M2MTimerPimpl::_next_timer_id = 1;
 
-static m2m::Vector<M2MTimerPimpl*> timer_impl_list;
+m2m::Vector<M2MTimerPimpl*> *timer_impl_list = 0;
 
 extern "C" void tasklet_func(arm_event_s *event)
 {
     // skip the init event as there will be a timer event after
     if (event->event_type == MBED_CLIENT_TIMER_EVENT) {
+        assert(timer_impl_list != NULL);
         bool timer_found = false;
         eventOS_scheduler_mutex_wait();
-        int timer_count = timer_impl_list.size();
+        int timer_count = timer_impl_list->size();
         for (int index = 0; index < timer_count; index++) {
-            M2MTimerPimpl* timer = timer_impl_list[index];
+            M2MTimerPimpl* timer = (*timer_impl_list)[index];
             if (timer->get_timer_id() == event->event_id) {
                 eventOS_scheduler_mutex_release();
                 timer_found = true;
@@ -76,7 +77,8 @@ M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
   _total_interval(0),
   _still_left(0),
   _status(0),
-  _dtls_type(false)
+  _dtls_type(false),
+  _started(false)
 {
     ns_hal_init(NULL, MBED_CLIENT_EVENT_LOOP_SIZE, NULL, NULL);
     eventOS_scheduler_mutex_wait();
@@ -86,8 +88,11 @@ M2MTimerPimpl::M2MTimerPimpl(M2MTimerObserver& observer)
     }
 
     // XXX: this wraps over quite soon
+    if (timer_impl_list == NULL) {
+        timer_impl_list = new m2m::Vector<M2MTimerPimpl*>();
+    }
     _timer_id = M2MTimerPimpl::_next_timer_id++;
-    timer_impl_list.push_back(this);
+    timer_impl_list->push_back(this);
     eventOS_scheduler_mutex_release();
 }
 
@@ -101,13 +106,17 @@ M2MTimerPimpl::~M2MTimerPimpl()
 
     // remove the timer from object list
     eventOS_scheduler_mutex_wait();
-    int timer_count = timer_impl_list.size();
+    int timer_count = timer_impl_list->size();
     for (int index = 0; index < timer_count; index++) {
-        const M2MTimerPimpl* timer = timer_impl_list[index];
+        const M2MTimerPimpl* timer = (*timer_impl_list)[index];
         if (timer->get_timer_id() == _timer_id) {
-            timer_impl_list.erase(index);
+            timer_impl_list->erase(index);
             break;
         }
+    }
+
+    if (timer_impl_list->size() == 0) {
+        delete timer_impl_list;
     }
     eventOS_scheduler_mutex_release();
 }
@@ -154,11 +163,16 @@ void M2MTimerPimpl::start()
                                             _interval);
     }
     assert(status == 0);
+    _started = true;
 }
 
 void M2MTimerPimpl::cancel()
 {
-    eventOS_event_timer_cancel(_timer_id, M2MTimerPimpl::_tasklet_id);
+    if (_started) {
+        // Cancel the eventOS timer only if we previously started it
+        _started = false;
+        eventOS_event_timer_cancel(_timer_id, M2MTimerPimpl::_tasklet_id);
+    }
 }
 
 void M2MTimerPimpl::stop_timer()
@@ -222,6 +236,7 @@ void M2MTimerPimpl::start_still_left_timer()
             _still_left = 0;
         }
         assert(status == 0);
+        _started = true;
     } else {
         _observer.timer_expired(_type);
         if(!_single_shot) {

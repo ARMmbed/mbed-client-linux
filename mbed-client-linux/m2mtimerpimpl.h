@@ -120,6 +120,8 @@ private:
     static int8_t       _tasklet_id;
     static int8_t       _next_timer_id;
 
+    bool         _started;
+
     friend class M2MTimer;
 };
 

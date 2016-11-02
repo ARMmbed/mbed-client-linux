@@ -3,6 +3,7 @@
  */
 
 #define _POSIX_C_SOURCE 200112L
+#include <stdlib.h>
 #include <assert.h>
 #include <time.h>
 #include <pthread.h>
@@ -11,17 +12,22 @@
 #include "platform/arm_hal_timer.h"
 #include "platform/arm_hal_interrupt.h"
 
+#define NSEC_IN_MS     1000000
+#define NSEC_IN_S   1000000000
+
 // Low precision platform tick timer variables
 static void (*tick_timer_callback)(void);
 static volatile bool    timer_initialized = false;
 static pthread_t timer_listener;
 #define TICK_TIMER_ID   1
 
+static uint32_t timer_period_ms = 0;
+
 static void add_10msec(struct timespec *ts)
 {
-    ts->tv_nsec += 10000000;
+    ts->tv_nsec += NSEC_IN_MS * timer_period_ms;
     if (ts->tv_nsec >= 1000000000) {
-        ts->tv_nsec = ts->tv_nsec - 1000000000;
+        ts->tv_nsec = ts->tv_nsec - NSEC_IN_S;
         ts->tv_sec += 1;
     }
 }
@@ -51,14 +57,17 @@ static void* timer_thread(void *arg)
     }
 }
 
-static void tick_timer_create(void)
+static void tick_timer_cleanup(void)
 {
-    // Tick timer thread is implicitly initialized in platform_tick_timer_start
+    platform_tick_timer_stop();
 }
 
 // Low precision platform tick timer
 int8_t platform_tick_timer_register(void (*tick_timer_cb_handler)(void))
 {
+    // following atexit assumes tick_timer gets registered only once, might need to
+    // do some checking here if we think it's possible for someone to register multiple times
+    atexit(tick_timer_cleanup);
     tick_timer_callback = tick_timer_cb_handler;
     return TICK_TIMER_ID;
 }
@@ -66,6 +75,7 @@ int8_t platform_tick_timer_register(void (*tick_timer_cb_handler)(void))
 int8_t platform_tick_timer_start(uint32_t period_ms)
 {
     // Create thread to wait for signal from timer
+    timer_period_ms = period_ms;
     return pthread_create(&timer_listener, NULL, &timer_thread, NULL);
 }
 

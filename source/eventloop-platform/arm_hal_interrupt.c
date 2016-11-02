@@ -21,6 +21,14 @@ void platform_critical_init(void)
     assert(err == 0);
 }
 
+void platform_critical_cleanup(void)
+{
+    int err = pthread_mutex_destroy(&critical_mutex_id);
+    assert(err == 0);
+    err = pthread_mutexattr_destroy(&critical_mutexattr);
+    assert(err == 0);
+}
+
 void platform_enter_critical(void)
 {
     pthread_mutex_lock(&critical_mutex_id);

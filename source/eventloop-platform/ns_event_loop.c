@@ -95,3 +95,18 @@ void ns_event_loop_thread_start(void)
     int err = sem_post(&event_start_sema_id);
     assert(err == 0);
 }
+
+void ns_event_loop_thread_cleanup(void)
+{
+    int err = pthread_cancel(event_thread_id);
+    assert(err == 0);
+    err = pthread_join(event_thread_id, NULL);
+    assert(err == 0);
+    err = pthread_mutex_destroy(&event_mutex_id);
+    assert(err == 0);
+    err = pthread_mutexattr_destroy(&event_mutex_mutexattr);
+    assert(err == 0);
+    err = sem_destroy(&event_start_sema_id);
+    assert(err == 0);
+    err = sem_destroy(&event_signal_sema_id);
+}

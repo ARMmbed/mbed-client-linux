@@ -34,4 +34,7 @@ void ns_hal_init(void *heap, size_t h_size, void (*passed_fptr)(heap_fail_t), me
     ns_event_loop_thread_create();
     ns_event_loop_thread_start();
     initted = true;
+
+    atexit(platform_critical_cleanup);
+    atexit(ns_event_loop_thread_cleanup);
 }

@@ -6,5 +6,6 @@
 #define ARM_HAL_INTERRUPT_PRIVATE_H_
 
 void platform_critical_init(void);
+void platform_critical_cleanup(void);
 
 #endif

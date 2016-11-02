@@ -8,6 +8,7 @@ extern "C" {
 
 void ns_event_loop_thread_create(void);
 void ns_event_loop_thread_start(void);
+void ns_event_loop_thread_cleanup(void);
 
 #ifdef __cplusplus
 }

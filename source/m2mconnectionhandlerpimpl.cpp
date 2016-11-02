@@ -42,8 +42,6 @@ int8_t M2MConnectionHandlerPimpl::_tasklet_id = -1;
 
 static M2MConnectionHandlerPimpl *connection_handler = NULL;
 static sem_t socket_event_handled;
-static int fd_stop_write = -1;
-static int fd_stop_read = -1;
 
 pthread_t socket_listener_thread;
 void* __listener_thread(void*)
@@ -147,17 +145,8 @@ void M2MConnectionHandlerPimpl::socket_listener()
         FD_ZERO(&read_set);
         // Add socket to read set
         FD_SET(sock, &read_set);
-        // Add stop pipe to read set
-        FD_SET(fd_stop_read, &read_set);
-        int max_fd = sock > fd_stop_read ? sock : fd_stop_read;
-        if (select(max_fd + 1, &read_set, NULL, NULL, NULL) == -1) {
+        if (select(sock + 1, &read_set, NULL, NULL, NULL) == -1) {
             return;
-        }
-
-        if (FD_ISSET(fd_stop_read, &read_set)) {
-            // We were signaled to stop reading so quit
-            tr_debug("socket_listener() - got signal, stopping");
-            break;
         }
 
         if (FD_ISSET(sock, &read_set)) {
@@ -171,6 +160,9 @@ void M2MConnectionHandlerPimpl::socket_listener()
 
 M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 {
+    eventOS_scheduler_mutex_wait();
+    connection_handler = NULL;
+    eventOS_scheduler_mutex_release();
     stop_listening();
     sem_destroy(&socket_event_handled);
 
@@ -481,27 +473,12 @@ void M2MConnectionHandlerPimpl::stop_listening()
 
     _listening = false;
 
-    // write to stop pipe to signal listening thread to stop
-    if (fd_stop_write >= 0) {
-        tr_debug("stop_listening() - signaling listener");
-        ssize_t s = write(fd_stop_write, "\0", 1);
-        (void)s;
-        close(fd_stop_write);
-        fd_stop_write = -1;
-    }
-
-    sem_post(&socket_event_handled);
+    pthread_cancel(socket_listener_thread);
     pthread_join(socket_listener_thread, NULL);
     _running = false;
 
     // Close the socket
     close_socket();
-
-    // Cleanup stop pipe handler
-    if (fd_stop_read >= 0) {
-        close(fd_stop_read);
-        fd_stop_read = -1;
-    }
 
     // Reset security
     if(_security_impl) {
@@ -784,20 +761,6 @@ void M2MConnectionHandlerPimpl::close_socket()
 
 bool M2MConnectionHandlerPimpl::setup_listener_thread()
 {
-    // Prepare a pipe for signaling listening thread when we want to stop
-    if (fd_stop_write < 0 && fd_stop_read < 0) {
-        int stop_pipe[2];
-        if (pipe(stop_pipe)) {
-            perror("stop pipe creation failed");
-            abort();
-        }
-        fd_stop_read = stop_pipe[0];
-        fd_stop_write = stop_pipe[1];
-    }
-    else {
-        perror("Stop pipe was already created!");
-    }
-
     int error = pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
     if (error == 0) {
         return true;

@@ -2,77 +2,77 @@
  * Copyright (c) 2016 ARM Limited, All Rights Reserved
  */
 
+#define _POSIX_C_SOURCE 200112L
 #include <assert.h>
-#include <signal.h>
 #include <time.h>
+#include <pthread.h>
+#include <errno.h>
 #include "ns_types.h"
 #include "platform/arm_hal_timer.h"
 #include "platform/arm_hal_interrupt.h"
 
 // Low precision platform tick timer variables
 static void (*tick_timer_callback)(void);
-static timer_t          tick_timer_id;
-struct sigevent         signal_event;
-struct itimerspec       timer_specs;
 static volatile bool    timer_initialized = false;
+static pthread_t timer_listener;
 #define TICK_TIMER_ID   1
 
-void expired(union sigval sigval)
+static void add_10msec(struct timespec *ts)
 {
-    if (tick_timer_callback != NULL) {
-        tick_timer_callback();
+    ts->tv_nsec += 10000000;
+    if (ts->tv_nsec >= 1000000000) {
+        ts->tv_nsec = ts->tv_nsec - 1000000000;
+        ts->tv_sec += 1;
     }
 }
 
-// static method for creating the timer, called implicitly by platform_tick_timer_register if
-// timer was not enabled already
+static void* timer_thread(void *arg)
+{
+    (void)arg;
+    int err = 0;
+    struct timespec next_timeout_ts;
+    err = clock_gettime(CLOCK_MONOTONIC, &next_timeout_ts);
+    assert(err == 0);
+
+    while(1) {
+        // Determine absolute time we want to sleep until
+        add_10msec(&next_timeout_ts);
+
+        // Call nanosleep until error or no interrupt, ie. return code is 0
+        do {
+            err = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next_timeout_ts, NULL);
+            assert(err == 0 || err == EINTR);
+        } while(err == EINTR);
+
+        // Done sleeping, call callback
+        if (tick_timer_callback != NULL) {
+            tick_timer_callback();
+        }
+    }
+}
+
 static void tick_timer_create(void)
 {
-    signal_event.sigev_notify = SIGEV_THREAD;
-    signal_event.sigev_value.sival_ptr = NULL;
-    signal_event.sigev_notify_function = expired;
-    signal_event.sigev_notify_attributes = NULL;
-
-    int ret = timer_create(CLOCK_MONOTONIC, &signal_event, &tick_timer_id);
-    timer_initialized = true;
-    assert(ret == 0);
+    // Tick timer thread is implicitly initialized in platform_tick_timer_start
 }
 
 // Low precision platform tick timer
 int8_t platform_tick_timer_register(void (*tick_timer_cb_handler)(void))
 {
-    if (!timer_initialized) {
-        tick_timer_create();
-    }
     tick_timer_callback = tick_timer_cb_handler;
     return TICK_TIMER_ID;
 }
 
 int8_t platform_tick_timer_start(uint32_t period_ms)
 {
-    int8_t retval = -1;
-    if (tick_timer_id != NULL) {
-        timer_specs.it_value.tv_sec = period_ms / 1000;
-        timer_specs.it_value.tv_nsec = (period_ms % 1000) * 1000000;
-        timer_specs.it_interval.tv_sec = period_ms / 1000;
-        timer_specs.it_interval.tv_nsec = (period_ms % 1000) * 1000000;
-        retval = timer_settime(tick_timer_id, 0, &timer_specs, NULL);
-    }
-
-    return retval;
+    // Create thread to wait for signal from timer
+    return pthread_create(&timer_listener, NULL, &timer_thread, NULL);
 }
 
 int8_t platform_tick_timer_stop(void)
 {
-    int8_t retval = -1;
-    if (tick_timer_id != NULL) {
-        timer_specs.it_value.tv_sec = 0;
-        timer_specs.it_value.tv_nsec = 0;
-        timer_specs.it_interval.tv_sec = 0;
-        timer_specs.it_interval.tv_nsec = 0;
-
-        retval = timer_settime(tick_timer_id, 0, &timer_specs, NULL);
-
-    }
-    return retval;
+    pthread_cancel(timer_listener);
+    pthread_join(timer_listener, NULL);
+    return 0;
 }
+

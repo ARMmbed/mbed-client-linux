@@ -235,13 +235,13 @@ private:
     M2MInterface::BindingMode                   _binding_mode;
     M2MInterface::NetworkStack                  _network_stack;
     M2MConnectionObserver::SocketAddress        _address;
-    int                                         _socket;
+    volatile int                                _socket;
     bool                                        _is_handshaking;
     bool                                        _listening;
     M2MConnectionObserver::ServerType           _server_type;
     uint16_t                                    _server_port;
     uint16_t                                    _listen_port;
-    bool                                        _running;
+    volatile bool                               _running;
     unsigned char                               _recv_buffer[BUFFER_LENGTH];
     uint32_t                                    _net_iface;
     struct sockaddr_storage                     _socket_address;
@@ -249,6 +249,7 @@ private:
     static int8_t                               _tasklet_id;
     String                                      _server_address;
     sem_t                                       _socket_event_handled;
+    pthread_t                                   _socket_listener_thread;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_mbed;

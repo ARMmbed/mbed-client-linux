@@ -40,40 +40,66 @@
 
 int8_t M2MConnectionHandlerPimpl::_tasklet_id = -1;
 
-static M2MConnectionHandlerPimpl *connection_handler = NULL;
+typedef struct {
+    void* data_ptr;
+    M2MConnectionHandlerPimpl* connection_handler;
+} SendEventData_s;
 
-pthread_t socket_listener_thread;
-void* __listener_thread(void*)
+void* __listener_thread(void* arg)
 {
+    assert(arg != NULL);
+    M2MConnectionHandlerPimpl* connection_handler = static_cast<M2MConnectionHandlerPimpl*>(arg);
     if (connection_handler) {
         connection_handler->socket_listener();
     }
     return 0;
 }
 
-extern "C" void connection_event_handler(arm_event_s *event)
+extern "C" void connection_event_handler(arm_event_s* event)
 {
-
-    if(!connection_handler){
+    /*
+     * The connection handler instance is passed in differently depending on event type, so we need to
+     * first find out which event we're dealing with and then cast data_ptr to correct type to get to
+     * the connection handler instance. In any case, if event->data_ptr is null, there is nothing we can do
+     */
+    if (!event->data_ptr) {
         return;
     }
+
+    M2MConnectionHandlerPimpl* connection_handler = NULL;
+    SendEventData_s* send_event_data = NULL;
 
     switch(event->event_type){
 
         case M2MConnectionHandlerPimpl::ESocketReadytoRead:
-            connection_handler->receive_handler();
-            connection_handler->signal_socket_event_handled();
+            connection_handler = static_cast<M2MConnectionHandlerPimpl*>(event->data_ptr);
+            if (connection_handler) {
+                connection_handler->receive_handler();
+                connection_handler->signal_socket_event_handled();
+            }
             break;
 
         case M2MConnectionHandlerPimpl::ESocketSend:
+            // In this case the data_ptr points to SendEventData_s struct which holds our pointer to connection handler
+            // and pointer to the data buffer. The event->event_data field contains the data length
+            send_event_data = static_cast<SendEventData_s*>(event->data_ptr);
+            if (!send_event_data || !send_event_data->data_ptr) {
+                break;
+            }
 
-            connection_handler->send_socket_data((uint8_t*)event->data_ptr, event->event_data);
+            if (send_event_data->connection_handler) {
+                send_event_data->connection_handler->send_socket_data((uint8_t*)send_event_data->data_ptr, event->event_data);
+                free(send_event_data->data_ptr);
+            }
+
             free(event->data_ptr);
             break;
 
         case M2MConnectionHandlerPimpl::ESocketDnsHandler:
-
-            connection_handler->dns_handler();
+            connection_handler = static_cast<M2MConnectionHandlerPimpl*>(event->data_ptr);
+            if (connection_handler) {
+                connection_handler->dns_handler();
+            }
             break;
 
         default:
@@ -90,7 +116,7 @@ void M2MConnectionHandlerPimpl::send_receive_event(void)
     event.receiver = M2MConnectionHandlerPimpl::_tasklet_id;
     event.sender = 0;
     event.event_type = ESocketReadytoRead;
-    event.data_ptr = NULL;
+    event.data_ptr = this;
     event.priority = ARM_LIB_HIGH_PRIORITY_EVENT;
     eventOS_event_send(&event);
 
@@ -121,7 +147,6 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
     memset(&_address, 0, sizeof _address);
     memset(&_socket_address, 0, sizeof(struct sockaddr_storage));
 
-    connection_handler = this;
     int err = sem_init(&_socket_event_handled, 0, 1);
     assert(err == 0);
 
@@ -157,9 +182,6 @@ void M2MConnectionHandlerPimpl::socket_listener()
 
 M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 {
-    eventOS_scheduler_mutex_wait();
-    connection_handler = NULL;
-    eventOS_scheduler_mutex_release();
     stop_listening();
     sem_destroy(&_socket_event_handled);
 
@@ -191,7 +213,7 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     event.receiver = M2MConnectionHandlerPimpl::_tasklet_id;
     event.sender = 0;
     event.event_type = ESocketDnsHandler;
-    event.data_ptr = NULL;
+    event.data_ptr = this;
     event.priority = ARM_LIB_HIGH_PRIORITY_EVENT;
 
     return !eventOS_event_send(&event);
@@ -369,21 +391,30 @@ bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
         return false;
     }
 
-    event.data_ptr = (uint8_t*)malloc(data_len);
-    if(!event.data_ptr) {
+    SendEventData_s* event_data = (SendEventData_s*)malloc(sizeof(SendEventData_s));
+    if (!event_data) {
         return false;
     }
-    memcpy(event.data_ptr, data, data_len);
+
+    event_data->data_ptr = (uint8_t*)malloc(data_len);
+    if(!event_data->data_ptr) {
+        free(event_data);
+        return false;
+    }
+    memcpy(event_data->data_ptr, data, data_len);
+    event_data->connection_handler = this;
 
     event.receiver = M2MConnectionHandlerPimpl::_tasklet_id;
     event.sender = 0;
     event.event_type = ESocketSend;
     event.event_data = data_len;
+    event.data_ptr = event_data;
     event.priority = ARM_LIB_HIGH_PRIORITY_EVENT;
 
     if (eventOS_event_send(&event) != 0) {
         // Event push failed, free the buffer
-        free(event.data_ptr);
+        free(event_data->data_ptr);
+        free(event_data);
         return false;
     }
 
@@ -466,12 +497,12 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
 void M2MConnectionHandlerPimpl::stop_listening()
 {
 
-    tr_debug("stop_listening() - thread id = %p", socket_listener_thread);
+    tr_debug("stop_listening() - thread id = %p", _socket_listener_thread);
 
     _listening = false;
 
-    pthread_cancel(socket_listener_thread);
-    pthread_join(socket_listener_thread, NULL);
+    pthread_cancel(_socket_listener_thread);
+    pthread_join(_socket_listener_thread, NULL);
     _running = false;
 
     // Close the socket
@@ -517,7 +548,7 @@ int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf, size_t le
         recv_len = recv(_socket, buf, len, 0);
     } else {
         struct sockaddr_storage from;
-        socklen_t length;
+        socklen_t length = sizeof(struct sockaddr_storage);
         recv_len = recvfrom(_socket, buf, len, 0, (sockaddr*)&from, &length);
     }
 
@@ -758,7 +789,7 @@ void M2MConnectionHandlerPimpl::close_socket()
 
 bool M2MConnectionHandlerPimpl::setup_listener_thread()
 {
-    int error = pthread_create(&socket_listener_thread, NULL,__listener_thread, NULL);
+    int error = pthread_create(&_socket_listener_thread, NULL,__listener_thread, (void*)this);
     if (error == 0) {
         return true;
     }

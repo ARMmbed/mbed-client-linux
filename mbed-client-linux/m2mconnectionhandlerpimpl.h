@@ -17,6 +17,7 @@
 #define M2M_CONNECTION_HANDLER_PIMPL_H__
 
 #include <sys/socket.h>
+#include <semaphore.h>
 #include "ns_types.h"
 #include "mbed-client/m2mconfig.h"
 #include "mbed-client/m2mconstants.h"
@@ -190,6 +191,8 @@ public:
 
     void send_receive_event(void);
 
+    void signal_socket_event_handled(void);
+
     /**
     * @brief Socket listener
     */
@@ -245,6 +248,7 @@ private:
     socklen_t                                   _socket_address_len;
     static int8_t                               _tasklet_id;
     String                                      _server_address;
+    sem_t                                       _socket_event_handled;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_mbed;

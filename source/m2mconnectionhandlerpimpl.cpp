@@ -41,7 +41,6 @@
 int8_t M2MConnectionHandlerPimpl::_tasklet_id = -1;
 
 static M2MConnectionHandlerPimpl *connection_handler = NULL;
-static sem_t socket_event_handled;
 
 pthread_t socket_listener_thread;
 void* __listener_thread(void*)
@@ -62,9 +61,8 @@ extern "C" void connection_event_handler(arm_event_s *event)
     switch(event->event_type){
 
         case M2MConnectionHandlerPimpl::ESocketReadytoRead:
-
             connection_handler->receive_handler();
-            sem_post(&socket_event_handled);
+            connection_handler->signal_socket_event_handled();
             break;
 
         case M2MConnectionHandlerPimpl::ESocketSend:
@@ -124,8 +122,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
     memset(&_socket_address, 0, sizeof(struct sockaddr_storage));
 
     connection_handler = this;
-
-    int err = sem_init(&socket_event_handled, 0, 1);
+    int err = sem_init(&_socket_event_handled, 0, 1);
     assert(err == 0);
 
     eventOS_scheduler_mutex_wait();
@@ -152,7 +149,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
         if (FD_ISSET(sock, &read_set)) {
             // Socket is ready to read, signal connection handler to read socket
             send_receive_event();
-            sem_wait(&socket_event_handled);
+            sem_wait(&_socket_event_handled);
         }
     }
     tr_debug("M2MConnectionHandlerPimpl - listener finished, id = %p", (void*)pthread_self());
@@ -164,7 +161,7 @@ M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
     connection_handler = NULL;
     eventOS_scheduler_mutex_release();
     stop_listening();
-    sem_destroy(&socket_event_handled);
+    sem_destroy(&_socket_event_handled);
 
     delete _security_impl;
     tr_debug("~M2MConnectionHandlerPimpl() - OUT");
@@ -768,6 +765,11 @@ bool M2MConnectionHandlerPimpl::setup_listener_thread()
 
     tr_error("M2MConnectionHandlerPimpl::setup_listener_thread() - couldn't create thread, error %d", error);
     return false;
+}
+
+void M2MConnectionHandlerPimpl::signal_socket_event_handled(void)
+{
+    sem_post(&_socket_event_handled);
 }
 
 void M2MConnectionHandlerPimpl::enable_keepalive()

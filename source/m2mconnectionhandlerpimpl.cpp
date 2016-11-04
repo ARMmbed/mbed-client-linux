@@ -141,7 +141,8 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
  _listen_port(0),
  _running(false),
  _net_iface(0),
- _socket_address_len(0)
+ _socket_address_len(0),
+ _socket_state(ESocketStateDisconnected)
 {
 
     memset(&_address, 0, sizeof _address);
@@ -153,6 +154,7 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
     eventOS_scheduler_mutex_wait();
     if (M2MConnectionHandlerPimpl::_tasklet_id == -1) {
         M2MConnectionHandlerPimpl::_tasklet_id = eventOS_event_handler_create(&connection_event_handler, ESocketIdle);
+        tr_info("M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl() - Tasklet created, id = %d", M2MConnectionHandlerPimpl::_tasklet_id);
     }
     eventOS_scheduler_mutex_release();
 
@@ -161,17 +163,42 @@ M2MConnectionHandlerPimpl::M2MConnectionHandlerPimpl(M2MConnectionHandler* base,
 void M2MConnectionHandlerPimpl::socket_listener()
 {
     tr_debug("socket_listener() - started id = %p", (void*)pthread_self());
-    while (_running && _socket) {
-        int sock = _socket;
-        fd_set read_set;
-        FD_ZERO(&read_set);
+    // Check if there is a socket for us to listen
+    if (_socket < 0) {
+        tr_debug("socket_listener() - no socket!");
+        return;
+    }
+
+    fd_set sock_set;
+    // Check if we are in connecting state, if so wait until socket becomes writable
+    // and update socket state
+    while (_running && _socket >= 0 && _socket_state == ESocketStateConnecting) {
+        FD_ZERO(&sock_set);
         // Add socket to read set
-        FD_SET(sock, &read_set);
-        if (select(sock + 1, &read_set, NULL, NULL, NULL) == -1) {
+        FD_SET(_socket, &sock_set);
+        if (select(_socket + 1, NULL, &sock_set, NULL, NULL) == -1) {
+            tr_debug("socket_listener() - write select fail!");
             return;
         }
 
-        if (FD_ISSET(sock, &read_set)) {
+        if (FD_ISSET(_socket, &sock_set)) {
+            _socket_state = ESocketStateConnected;
+            send_dns_event();
+            break;
+        }
+    }
+
+    // Ready to listen until we're told not to
+    while (_running && _socket >= 0) {
+        FD_ZERO(&sock_set);
+        // Add socket to read set
+        FD_SET(_socket, &sock_set);
+        if (select(_socket + 1, &sock_set, NULL, NULL, NULL) == -1) {
+            tr_debug("socket_listener() - read select fail!");
+            return;
+        }
+
+        if (FD_ISSET(_socket, &sock_set)) {
             // Socket is ready to read, signal connection handler to read socket
             send_receive_event();
             sem_wait(&_socket_event_handled);
@@ -182,6 +209,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
 
 M2MConnectionHandlerPimpl::~M2MConnectionHandlerPimpl()
 {
+    tr_debug("~M2MConnectionHandlerPimpl() - IN");
     stop_listening();
     sem_destroy(&_socket_event_handled);
 
@@ -200,15 +228,20 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
                                                        M2MConnectionObserver::ServerType server_type,
                                                        const M2MSecurity* security)
 {
-
-    arm_event_s event;
-
     tr_debug("resolve_server_address()");
 
     _security = security;
     _server_port = server_port;
     _server_type = server_type;
     _server_address = server_address;
+
+    return send_dns_event();
+
+}
+
+bool M2MConnectionHandlerPimpl::send_dns_event()
+{
+    arm_event_s event;
 
     event.receiver = M2MConnectionHandlerPimpl::_tasklet_id;
     event.sender = 0;
@@ -217,47 +250,123 @@ bool M2MConnectionHandlerPimpl::resolve_server_address(const String& server_addr
     event.priority = ARM_LIB_HIGH_PRIORITY_EVENT;
 
     return !eventOS_event_send(&event);
-
 }
 
 void M2MConnectionHandlerPimpl::dns_handler()
+{
+    bool success = false;
+    bool retry = false;
+    int status = 0;
+    int error = 0;
+    tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
+
+    switch(_socket_state) {
+        case ESocketStateDisconnected:
+            success = resolve_address();
+
+            if (!success) {
+                tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
+                close_socket();
+                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
+                return;
+            }
+
+            _running = true;
+            if (!setup_listener_thread()) {
+                _running = false;
+                close_socket();
+                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - listener thread error %s");
+                return;
+            }
+
+            if (_socket_state == ESocketStateConnected) {
+                tr_debug("socket_listener() - connected, sending new event for security");
+                // Connect was synchronous and successful, so schedule new DNS event to continue the connection.
+                // i.e. Execute next case, this should probably be just a call to function without unnecessary event
+                if (!send_dns_event()) {
+                    tr_debug("M2MConnectionHandlerPimpl::dns_handler - couldn't send event");
+                    _running = false;
+                    close_socket();
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                    return;
+                }
+            }
+            break;
+        case ESocketStateConnected:
+            if (_security) {
+                if (_security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Certificate ||
+                    _security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Psk) {
+
+                    if( _security_impl != NULL ){
+                        _security_impl->reset();
+                        if (_security_impl->init(_security) == 0) {
+                            _is_handshaking = true;
+                            success = true;
+                            tr_debug("dns_handler - connect DTLS");
+                            if(_security_impl->start_connecting_non_blocking(_base) < 0 ){
+                                tr_debug("dns_handler - handshake failed");
+                                _is_handshaking = false;
+                                success = false;
+                                retry = true;
+                            }
+                        } else {
+                            tr_error("dns_handler - init failed");
+                            success = false;
+                            retry = false;
+                        }
+                    } else {
+                        tr_error("dns_handler - sec is null");
+                        success = false;
+                        retry = false;
+                    }
+
+                    if (!success) {
+                        close_socket();
+                        _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, retry);
+                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
+                        return;
+                    }
+                }
+
+            }
+            if(!_is_handshaking) {
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - address_ready");
+                enable_keepalive();
+                _observer.address_ready(_address,
+                                        _server_type,
+                                        _address._port);
+            }
+            break;
+        case ESocketStateConnecting:
+        default:
+            // Nothing for us to do here?
+            break;
+    }
+    tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
+}
+
+bool M2MConnectionHandlerPimpl::resolve_address()
 {
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
     bool success = false;
     bool retry = false;
-    tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
+    int status = 0;
+    int error = 0;
 
-    memset(&_hints, 0, sizeof(struct addrinfo));
-    if(_network_stack == M2MInterface::LwIP_IPv4 ||
-       _network_stack == M2MInterface::ATWINC_IPv4) {
-        _hints.ai_family = AF_INET;
-    }
-    else if (_network_stack == M2MInterface::LwIP_IPv6 ||
-            _network_stack == M2MInterface::Nanostack_IPv6) {
-        _hints.ai_family = AF_INET6;
-    }
-    else {
-        _hints.ai_family = AF_UNSPEC;
-    }
+    _hints = build_address_hints();
 
-    if (is_tcp_connection()) {
-        _hints.ai_socktype = SOCK_STREAM;
-        _hints.ai_protocol = IPPROTO_TCP;
-    }
-    else {
-        _hints.ai_socktype = SOCK_DGRAM;
-        _hints.ai_protocol = IPPROTO_UDP;
-    }
-
-    int status = getaddrinfo(_server_address.c_str(), NULL, &_hints, &addr_info);
+    // XXX TODO: Fix memory leak of addr_info
+    status = getaddrinfo(_server_address.c_str(), NULL, &_hints, &addr_info);
     if (status == 0 && addr_info) {
         char ip_address[INET6_ADDRSTRLEN];
         while(addr_info) {
-            tr_debug("M2MConnectionHandlerPimpl::dns_handler - new address");
+            tr_debug("M2MConnectionHandlerPimpl::resolve_address() - new address");
             close_socket();
             if(!init_socket()) {
-                tr_debug("M2MConnectionHandlerPimpl::dns_handler - init socket fail");
+                tr_debug("M2MConnectionHandlerPimpl::resolve_address() - init socket fail");
                 retry = true;
                 break;
             }
@@ -277,13 +386,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     _address._stack = M2MInterface::LwIP_IPv4;
                     _address._length = 4;
                     _address._address = &sin->sin_addr;
-                    if (connect(_socket, (const struct sockaddr *)&_socket_address, _socket_address_len) != 0) {
-                        success = false;
-                        tr_error("M2MConnectionHandlerPimpl::dns_handler - failed to connect %s, %s", ip_address, strerror(errno));
-                    } else {
-                        success = true;
-                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - connected to %s\n", ip_address);
-                    }
+                    tr_debug("M2MConnectionHandlerPimpl::resolve_address() - connecting to %s\n", ip_address);
+                    success = connect_socket();
                     break;
                 }
                 case AF_INET6:
@@ -296,13 +400,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     _address._stack = M2MInterface::LwIP_IPv6;
                     _address._length = 16;
                     _address._address = &sin6->sin6_addr;
-                    if (connect(_socket, (const struct sockaddr *)&_socket_address, _socket_address_len) != 0) {
-                        success = false;
-                        tr_error("M2MConnectionHandlerPimpl::dns_handler - failed to connect %s, %s", ip_address, strerror(errno));
-                    } else {
-                        success = true;
-                        tr_debug("M2MConnectionHandlerPimpl::dns_handler - connected to %s\n", ip_address);
-                    }
+                    tr_debug("M2MConnectionHandlerPimpl::resolve_address() - connecting to %s\n", ip_address);
+                    success = connect_socket();
                     break;
                 }
             }
@@ -315,68 +414,56 @@ void M2MConnectionHandlerPimpl::dns_handler()
 
     freeaddrinfo(addr_info);
 
-    if (!success) {
-        tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
-        close_socket();
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
-        tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
-        return;
+    return success;
+}
+
+struct addrinfo M2MConnectionHandlerPimpl::build_address_hints()
+{
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(struct addrinfo));
+    if(_network_stack == M2MInterface::LwIP_IPv4 ||
+       _network_stack == M2MInterface::ATWINC_IPv4) {
+        hints.ai_family = AF_INET;
+    }
+    else if (_network_stack == M2MInterface::LwIP_IPv6 ||
+            _network_stack == M2MInterface::Nanostack_IPv6) {
+        hints.ai_family = AF_INET6;
+    }
+    else {
+        hints.ai_family = AF_UNSPEC;
     }
 
-    _running = true;
-    if (!setup_listener_thread()) {
-        _running = false;
-        close_socket();
-        _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
-        tr_debug("M2MConnectionHandlerPimpl::dns_handler - listener thread error %s");
-        return;
+    if (is_tcp_connection()) {
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
     }
-
-    success = true;
-    retry = false;
-    if (_security) {
-        if (_security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Certificate ||
-            _security->resource_value_int(M2MSecurity::SecurityMode) == M2MSecurity::Psk) {
-
-            if( _security_impl != NULL ){
-                _security_impl->reset();
-                if (_security_impl->init(_security) == 0) {
-                    _is_handshaking = true;
-                    tr_debug("dns_handler - connect DTLS");
-                    if(_security_impl->start_connecting_non_blocking(_base) < 0 ){
-                        tr_debug("dns_handler - handshake failed");
-                        _is_handshaking = false;
-                        success = false;
-                        retry = true;
-                    }
-                } else {
-                    tr_error("dns_handler - init failed");
-                    success = false;
-                    retry = false;
-                }
-            } else {
-                tr_error("dns_handler - sec is null");
-                success = false;
-                retry = false;
-            }
-
-            if (!success) {
-                close_socket();
-                _observer.socket_error(M2MConnectionHandler::SSL_CONNECTION_ERROR, retry);
-                tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
-                return;
-            }
-        }
-
+    else {
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
     }
-    if(!_is_handshaking) {
-        tr_debug("M2MConnectionHandlerPimpl::dns_handler - address_ready");
-        enable_keepalive();
-        _observer.address_ready(_address,
-                                _server_type,
-                                _address._port);
+    return hints;
+}
+
+bool M2MConnectionHandlerPimpl::connect_socket()
+{
+    int status = -1;
+    bool success = false;
+    status = connect(_socket, (const struct sockaddr *)&_socket_address, _socket_address_len);
+    int error = errno;
+    if (status == 0) {
+        success = true;
+        _socket_state = ESocketStateConnected;
+        tr_debug("M2MConnectionHandlerPimpl::connect_socket() - connected");
     }
-    tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
+    else if (error == EINPROGRESS) {
+        success = true;
+        _socket_state = ESocketStateConnecting;
+        tr_debug("M2MConnectionHandlerPimpl::connect_socket() - connecting asynchronous");
+    } else {
+        success = false;
+        tr_error("M2MConnectionHandlerPimpl::connect_socket() - failed to connect, reason %s", strerror(error));
+    }
+    return success;
 }
 
 bool M2MConnectionHandlerPimpl::send_data(uint8_t *data,
@@ -429,8 +516,9 @@ void M2MConnectionHandlerPimpl::send_socket_data(uint8_t *data, uint16_t data_le
     bool success = false;
     int error = 0;
 
-    if(!data || ! data_len || !_running)
+    if(!data || !data_len || !_running)
     {
+        tr_debug("send_handler() - fail, data = %p, data_len = %d, _running = %d", data, data_len, _running);
         return;
     }
 
@@ -497,6 +585,7 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
 void M2MConnectionHandlerPimpl::stop_listening()
 {
 
+    // XXX TODO: What if _socket_listener_thread is uninitialized?
     tr_debug("stop_listening() - thread id = %p", _socket_listener_thread);
 
     _listening = false;
@@ -537,7 +626,7 @@ int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf, size_t le
 {
     ssize_t recv_len;
 
-    tr_debug("receive_from_socket");
+    tr_debug("receive_from_socket - running=%d, _socket=%d, buf=%d, len=%d", _running, _socket, buf, len);
 
     if(!_running)
     {
@@ -552,10 +641,12 @@ int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf, size_t le
         recv_len = recvfrom(_socket, buf, len, 0, (sockaddr*)&from, &length);
     }
 
+    int error = errno;
+    tr_debug("receive_from_socket - recv_len=%d, error=%s", recv_len, strerror(error));
     if(recv_len != -1){
         return recv_len;
     }
-    else if(errno == EWOULDBLOCK){
+    else if(error == EWOULDBLOCK){
         return M2MConnectionHandler::CONNECTION_ERROR_WANTS_READ;
     }
     else
@@ -609,7 +700,7 @@ bool M2MConnectionHandlerPimpl::is_handshake_ongoing()
 
 void M2MConnectionHandlerPimpl::receive_handler()
 {
-    tr_debug("receive_handler()");
+    tr_debug("receive_handler() - _is_handshaking=%d, _listening=%d, _running=%d, _use_secure_connection=%d", _is_handshaking, _listening, _running, _use_secure_connection);
 
     if(_is_handshaking){
         receive_handshake_handler();
@@ -764,7 +855,7 @@ bool M2MConnectionHandlerPimpl::init_socket()
         tr_debug("init_socket - bind fail");
         return false;
     }
-
+    tr_debug("init_socket - socket=%d", _socket);
     tr_debug("init_socket - OUT");
     return true;
 }
@@ -783,6 +874,7 @@ void M2MConnectionHandlerPimpl::close_socket()
        shutdown(_socket, SHUT_RDWR);
        close(_socket);
        _socket = -1;
+       _socket_state = ESocketStateDisconnected;
     }
     tr_debug("close_socket() - OUT");
 }

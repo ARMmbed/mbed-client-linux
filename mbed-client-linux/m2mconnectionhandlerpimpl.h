@@ -191,6 +191,8 @@ public:
 
     void send_receive_event(void);
 
+    bool send_dns_event(void);
+
     void signal_socket_event_handled(void);
 
     /**
@@ -226,7 +228,19 @@ private:
      */
     bool setup_listener_thread();
 
+    bool resolve_address();
+
+    bool connect_socket();
+
+    struct addrinfo build_address_hints();
+
 private:
+    enum SocketState {
+        ESocketStateDisconnected,
+        ESocketStateConnecting,
+        ESocketStateConnected
+    };
+
     M2MConnectionHandler                        *_base;
     M2MConnectionObserver                       &_observer;
     M2MConnectionSecurity                       *_security_impl; //owned
@@ -250,6 +264,7 @@ private:
     String                                      _server_address;
     sem_t                                       _socket_event_handled;
     pthread_t                                   _socket_listener_thread;
+    volatile SocketState                                 _socket_state;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_mbed;

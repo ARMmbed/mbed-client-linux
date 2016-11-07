@@ -586,14 +586,15 @@ bool M2MConnectionHandlerPimpl::start_listening_for_data()
 void M2MConnectionHandlerPimpl::stop_listening()
 {
 
-    // XXX TODO: What if _socket_listener_thread is uninitialized?
-    tr_debug("stop_listening() - thread id = %p", _socket_listener_thread);
+    if (_running) {
+        tr_debug("stop_listening() - thread id = %p", _socket_listener_thread);
 
-    _listening = false;
+        _listening = false;
 
-    pthread_cancel(_socket_listener_thread);
-    pthread_join(_socket_listener_thread, NULL);
-    _running = false;
+        pthread_cancel(_socket_listener_thread);
+        pthread_join(_socket_listener_thread, NULL);
+        _running = false;
+    }
 
     // Close the socket
     close_socket();

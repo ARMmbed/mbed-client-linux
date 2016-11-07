@@ -264,7 +264,7 @@ private:
     String                                      _server_address;
     sem_t                                       _socket_event_handled;
     pthread_t                                   _socket_listener_thread;
-    volatile SocketState                                 _socket_state;
+    volatile SocketState                        _socket_state;
 
 friend class Test_M2MConnectionHandlerPimpl;
 friend class Test_M2MConnectionHandlerPimpl_mbed;

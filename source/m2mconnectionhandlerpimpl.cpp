@@ -351,6 +351,7 @@ bool M2MConnectionHandlerPimpl::resolve_address()
 {
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
+    struct addrinfo *addr_info_iter = NULL;
     bool success = false;
     bool retry = false;
     int status = 0;
@@ -358,11 +359,11 @@ bool M2MConnectionHandlerPimpl::resolve_address()
 
     _hints = build_address_hints();
 
-    // XXX TODO: Fix memory leak of addr_info
     status = getaddrinfo(_server_address.c_str(), NULL, &_hints, &addr_info);
     if (status == 0 && addr_info) {
         char ip_address[INET6_ADDRSTRLEN];
-        while(addr_info) {
+        addr_info_iter = addr_info;
+        while(addr_info_iter) {
             tr_debug("M2MConnectionHandlerPimpl::resolve_address() - new address");
             close_socket();
             if(!init_socket()) {
@@ -372,9 +373,9 @@ bool M2MConnectionHandlerPimpl::resolve_address()
             }
             // Load socket address from result entry
             memset(&_socket_address, 0, sizeof(struct sockaddr_storage));
-            memcpy(&_socket_address, addr_info->ai_addr, addr_info->ai_addrlen);
+            memcpy(&_socket_address, addr_info_iter->ai_addr, addr_info_iter->ai_addrlen);
             // Store length
-            _socket_address_len = addr_info->ai_addrlen;
+            _socket_address_len = addr_info_iter->ai_addrlen;
             switch(_socket_address.ss_family) {
                 case AF_INET:
                 {
@@ -408,7 +409,7 @@ bool M2MConnectionHandlerPimpl::resolve_address()
             if (success) {
                 break; // Working connection found, exit from loop
             }
-            addr_info = addr_info->ai_next;
+            addr_info_iter = addr_info_iter->ai_next;
         }
     }
 

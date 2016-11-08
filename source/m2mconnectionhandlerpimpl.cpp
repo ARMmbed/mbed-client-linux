@@ -255,22 +255,21 @@ bool M2MConnectionHandlerPimpl::send_dns_event()
 
 void M2MConnectionHandlerPimpl::dns_handler()
 {
+    ResolveAddressResult resolve_result = EResolveAddressSuccess;
     bool success = false;
     bool retry = false;
-    int status = 0;
-    int error = 0;
     tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
 
     tr_debug("M2MConnectionHandlerPimpl::dns_handler - _socket_state = %d", _socket_state);
 
     switch(_socket_state) {
         case ESocketStateDisconnected:
-            success = resolve_address();
+            resolve_result = resolve_address();
 
-            if (!success) {
+            if (resolve_result != EResolveAddressSuccess) {
                 tr_error("M2MConnectionHandlerPimpl::dns_handler - No connection");
                 close_socket();
-                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, (resolve_result == EResolveAddressFailRetry) );
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
                 return;
             }
@@ -279,7 +278,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
             if (!setup_listener_thread()) {
                 _running = false;
                 close_socket();
-                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, false);
                 tr_debug("M2MConnectionHandlerPimpl::dns_handler - listener thread error %s");
                 return;
             }
@@ -292,7 +291,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
                     tr_debug("M2MConnectionHandlerPimpl::dns_handler - couldn't send event");
                     _running = false;
                     close_socket();
-                    _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, retry);
+                    _observer.socket_error(M2MConnectionHandler::SOCKET_ABORT, false);
                     return;
                 }
             }
@@ -350,15 +349,13 @@ void M2MConnectionHandlerPimpl::dns_handler()
     tr_debug("M2MConnectionHandlerPimpl::dns_handler - OUT");
 }
 
-bool M2MConnectionHandlerPimpl::resolve_address()
+M2MConnectionHandlerPimpl::ResolveAddressResult M2MConnectionHandlerPimpl::resolve_address()
 {
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
     struct addrinfo *addr_info_iter = NULL;
     bool success = false;
-    bool retry = false;
     int status = 0;
-    int error = 0;
 
     _hints = build_address_hints();
 
@@ -371,7 +368,7 @@ bool M2MConnectionHandlerPimpl::resolve_address()
             close_socket();
             if(!init_socket()) {
                 tr_debug("M2MConnectionHandlerPimpl::resolve_address() - init socket fail");
-                retry = true;
+                return EResolveAddressFailRetry;
                 break;
             }
             // Load socket address from result entry
@@ -418,7 +415,11 @@ bool M2MConnectionHandlerPimpl::resolve_address()
 
     freeaddrinfo(addr_info);
 
-    return success;
+    if (success) {
+        return EResolveAddressSuccess;
+    }
+
+    return EResolveAddressFailNoRetry;
 }
 
 struct addrinfo M2MConnectionHandlerPimpl::build_address_hints()

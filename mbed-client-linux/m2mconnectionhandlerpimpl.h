@@ -48,6 +48,12 @@ public:
         ESocketSend         = 0x08
     };
 
+    enum ResolveAddressResult {
+        EResolveAddressSuccess,
+        EResolveAddressFailNoRetry,
+        EResolveAddressFailRetry
+    };
+
     struct TaskIdentifier {
         M2MConnectionHandlerPimpl *pimpl;
         void                      *data_ptr;
@@ -228,7 +234,7 @@ private:
      */
     bool setup_listener_thread();
 
-    bool resolve_address();
+    ResolveAddressResult resolve_address();
 
     bool connect_socket();
 

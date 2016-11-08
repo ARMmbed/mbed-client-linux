@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "mbed-client/m2mtimer.h"
 #include "mbed-client/m2mtimerobserver.h"
-#include "mbed-client/m2mconfig.h"
 #include "mbed-client-linux/m2mtimerpimpl.h"
+
 
 M2MTimer::M2MTimer(M2MTimerObserver& observer)
 : _observer(observer)
@@ -28,14 +27,16 @@ M2MTimer::M2MTimer(M2MTimerObserver& observer)
 M2MTimer::~M2MTimer()
 {
     delete _private_impl;
-    _private_impl = NULL;
+    //_private_impl = NULL;
 }
 
 void M2MTimer::start_timer( uint64_t interval,
                             M2MTimerObserver::Type type,
                             bool single_shot)
 {
-    _private_impl->start_timer(interval, type, single_shot);
+    _private_impl->start_timer(interval,
+                               type,
+                               single_shot);
 }
 
 void M2MTimer::start_dtls_timer(uint64_t intermediate_interval, uint64_t total_interval, M2MTimerObserver::Type type){

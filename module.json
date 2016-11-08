@@ -6,6 +6,13 @@
   "author": "Yogesh Pande <yogesh.pande@arm.com>",
   "homepage": "https://github.com/ARMmbed/mbed-client-linux",
   "license": "Apache-2.0",
-  "dependencies": {},
-  "targetDependencies": {}
+  "dependencies": {
+    "nanostack-libservice": "^3.0.0",
+    "nanostack-randlib": "^1.0.0"
+  },
+  "targetDependencies": {},
+  "extraIncludes": [
+    "source/eventloop/nanostack-event-loop",
+    "source/eventloop-platform"
+  ]
 }

@@ -15,10 +15,8 @@
  */
 
 #include <sys/types.h>
-#include <netdb.h>
 #include "mbed-client/m2mconnectionhandler.h"
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"
-#include "include/connthreadhelper.h"
 #include "mbed-client/m2mconstants.h"
 #include "mbed-client/m2msecurity.h"
 
@@ -90,9 +88,11 @@ void M2MConnectionHandler::set_platform_network_handler(void */*handler*/)
 
 void M2MConnectionHandler::claim_mutex()
 {
+    _private_impl->claim_mutex();
 }
 
 void M2MConnectionHandler::release_mutex()
 {
+    _private_impl->release_mutex();
 }
 

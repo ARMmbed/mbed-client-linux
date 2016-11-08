@@ -536,17 +536,17 @@ void M2MConnectionHandlerPimpl::send_socket_data(uint8_t *data, uint16_t data_le
         tr_debug("send_handler() - sending to socket=%d", _socket);
         if(is_tcp_connection()){
             //We need to "shim" the length in front
-            uint16_t d_len = data_len+4;
+            // XXX TODO: Use writev for combining the length + data?
             uint8_t* d = (uint8_t*)malloc(data_len+4);
 
             if(d){
 
-                d[0] = (data_len >> 24 )& 0xff;
-                d[1] = (data_len >> 16 )& 0xff;
+                d[0] = 0;
+                d[1] = 0;
                 d[2] = (data_len >> 8 )& 0xff;
                 d[3] = data_len & 0xff;
                 memcpy(d + 4, data, data_len);
-                sent_len = sendto(_socket, d, d_len, 0, (const sockaddr*)&_socket_address, _socket_address_len);
+                sent_len = sendto(_socket, d, data_len + 4, 0, (const sockaddr*)&_socket_address, _socket_address_len);
                 error = errno;
                 free(d);
 

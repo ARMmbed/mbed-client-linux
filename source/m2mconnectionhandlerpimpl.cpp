@@ -166,7 +166,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
     tr_debug("socket_listener() - started id = %p", (void*)pthread_self());
     // Check if there is a socket for us to listen
     if (_socket < 0) {
-        tr_debug("socket_listener() - no socket!");
+        tr_error("socket_listener() - no socket!");
         return;
     }
 
@@ -178,7 +178,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
         // Add socket to read set
         FD_SET(_socket, &sock_set);
         if (select(_socket + 1, NULL, &sock_set, NULL, NULL) == -1) {
-            tr_debug("socket_listener() - write select fail!");
+            tr_error("socket_listener() - write select fail!");
             return;
         }
 
@@ -195,7 +195,7 @@ void M2MConnectionHandlerPimpl::socket_listener()
         // Add socket to read set
         FD_SET(_socket, &sock_set);
         if (select(_socket + 1, &sock_set, NULL, NULL, NULL) == -1) {
-            tr_debug("socket_listener() - read select fail!");
+            tr_error("socket_listener() - read select fail!");
             return;
         }
 
@@ -283,7 +283,7 @@ void M2MConnectionHandlerPimpl::dns_handler()
             }
 
             if (_socket_state == ESocketStateConnected) {
-                tr_debug("socket_listener() - connected, sending new event for security");
+                tr_debug("M2MConnectionHandlerPimpl::dns_handler - connected, sending new event for security");
                 // Connect was synchronous and successful, so schedule new DNS event to continue the connection.
                 // i.e. Execute next case, this should probably be just a call to function without unnecessary event
                 if (!send_dns_event()) {

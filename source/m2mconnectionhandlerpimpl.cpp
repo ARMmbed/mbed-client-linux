@@ -354,21 +354,21 @@ M2MConnectionHandlerPimpl::ResolveAddressResult M2MConnectionHandlerPimpl::resol
     struct addrinfo _hints;
     struct addrinfo *addr_info = NULL;
     struct addrinfo *addr_info_iter = NULL;
-    bool success = false;
-    int status = 0;
+    ResolveAddressResult result = EResolveAddressFailNoRetry;
 
     _hints = build_address_hints();
 
-    status = getaddrinfo(_server_address.c_str(), NULL, &_hints, &addr_info);
+    int status = getaddrinfo(_server_address.c_str(), NULL, &_hints, &addr_info);
     if (status == 0 && addr_info) {
         char ip_address[INET6_ADDRSTRLEN];
         addr_info_iter = addr_info;
         while(addr_info_iter) {
+            result = EResolveAddressFailNoRetry;
             tr_debug("M2MConnectionHandlerPimpl::resolve_address() - new address");
             close_socket();
             if(!init_socket()) {
                 tr_debug("M2MConnectionHandlerPimpl::resolve_address() - init socket fail");
-                return EResolveAddressFailRetry;
+                result = EResolveAddressFailRetry;
                 break;
             }
             // Load socket address from result entry
@@ -387,8 +387,6 @@ M2MConnectionHandlerPimpl::ResolveAddressResult M2MConnectionHandlerPimpl::resol
                     _address._stack = M2MInterface::LwIP_IPv4;
                     _address._length = 4;
                     _address._address = &sin->sin_addr;
-                    tr_debug("M2MConnectionHandlerPimpl::resolve_address() - connecting to %s\n", ip_address);
-                    success = connect_socket();
                     break;
                 }
                 case AF_INET6:
@@ -401,13 +399,14 @@ M2MConnectionHandlerPimpl::ResolveAddressResult M2MConnectionHandlerPimpl::resol
                     _address._stack = M2MInterface::LwIP_IPv6;
                     _address._length = 16;
                     _address._address = &sin6->sin6_addr;
-                    tr_debug("M2MConnectionHandlerPimpl::resolve_address() - connecting to %s\n", ip_address);
-                    success = connect_socket();
                     break;
                 }
             }
-            if (success) {
-                break; // Working connection found, exit from loop
+
+            tr_debug("M2MConnectionHandlerPimpl::resolve_address() - connecting to %s\n", ip_address);
+            if (connect_socket()) {
+                result = EResolveAddressSuccess;
+                break;
             }
             addr_info_iter = addr_info_iter->ai_next;
         }
@@ -415,11 +414,7 @@ M2MConnectionHandlerPimpl::ResolveAddressResult M2MConnectionHandlerPimpl::resol
 
     freeaddrinfo(addr_info);
 
-    if (success) {
-        return EResolveAddressSuccess;
-    }
-
-    return EResolveAddressFailNoRetry;
+    return result;
 }
 
 struct addrinfo M2MConnectionHandlerPimpl::build_address_hints()

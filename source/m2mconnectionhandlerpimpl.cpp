@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -22,7 +23,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <netinet/tcp.h>
-#include <semaphore.h>
+#include <pthread.h>
 #include <assert.h>
 
 #include "mbed-client-linux/m2mconnectionhandlerpimpl.h"

@@ -614,7 +614,7 @@ int M2MConnectionHandlerPimpl::send_to_socket(const unsigned char *buf, size_t l
 
     if(!_running)
     {
-        tr_error("M2MConnectionHandlerPimpl::send_to_socket - Socket closed but trying to send!");
+        tr_error("send_to_socket - Socket closed but trying to send!");
         return (-1);
     }
 
@@ -634,6 +634,7 @@ int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf, size_t le
 
     if(!_running)
     {
+        tr_error("receive_from_socket - Socket closed but trying to read!");
         return (-1);
     }
 

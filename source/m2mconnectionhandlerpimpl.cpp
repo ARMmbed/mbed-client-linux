@@ -261,6 +261,8 @@ void M2MConnectionHandlerPimpl::dns_handler()
     int error = 0;
     tr_debug("M2MConnectionHandlerPimpl::dns_handler - IN");
 
+    tr_debug("M2MConnectionHandlerPimpl::dns_handler - _socket_state = %d", _socket_state);
+
     switch(_socket_state) {
         case ESocketStateDisconnected:
             success = resolve_address();
@@ -873,15 +875,15 @@ bool M2MConnectionHandlerPimpl::is_tcp_connection()
 
 void M2MConnectionHandlerPimpl::close_socket()
 {
-    tr_debug("close_socket() - IN");
-    if(_running && _socket >= 0) {
+    if(_socket >= 0) {
+        tr_debug("close_socket() - IN");
        _running = false;
        shutdown(_socket, SHUT_RDWR);
        close(_socket);
        _socket = -1;
        _socket_state = ESocketStateDisconnected;
+       tr_debug("close_socket() - OUT");
     }
-    tr_debug("close_socket() - OUT");
 }
 
 bool M2MConnectionHandlerPimpl::setup_listener_thread()

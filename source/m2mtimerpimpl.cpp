@@ -39,7 +39,7 @@ int8_t M2MTimerPimpl::_tasklet_id = -1;
 
 int8_t M2MTimerPimpl::_next_timer_id = 1;
 
-m2m::Vector<M2MTimerPimpl*> *timer_impl_list = 0;
+m2m::Vector<M2MTimerPimpl*> *timer_impl_list = NULL;
 
 extern "C" void tasklet_func(arm_event_s *event)
 {
@@ -117,6 +117,7 @@ M2MTimerPimpl::~M2MTimerPimpl()
 
     if (timer_impl_list->size() == 0) {
         delete timer_impl_list;
+        timer_impl_list = NULL;
     }
     eventOS_scheduler_mutex_release();
 }

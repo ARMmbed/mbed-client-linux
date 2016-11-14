@@ -36,6 +36,7 @@
 #include "eventOS_event.h"
 
 #include "mbed-trace/mbed_trace.h"
+#include "eventloop.h"
 
 #define TRACE_GROUP "mClt"
 
@@ -146,6 +147,8 @@ _net_iface(0),
 _socket_address_len(0),
 _socket_state(ESocketStateDisconnected)
 {
+
+    eventloop_init();
 
     memset(&_address, 0, sizeof _address);
     memset(&_socket_address, 0, sizeof(struct sockaddr_storage));

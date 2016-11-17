@@ -795,7 +795,7 @@ void M2MConnectionHandlerPimpl::receive_handler()
 
             }
 
-        } while (recv_size != EWOULDBLOCK);
+        } while (error != EWOULDBLOCK);
 
     }
 

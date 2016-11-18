@@ -746,12 +746,14 @@ void M2MConnectionHandlerPimpl::receive_handler()
     } else {
 
         ssize_t recv_size;
+        int error;
 
         do {
 
             recv_size = recv(_socket, _recv_buffer, sizeof(_recv_buffer), 0);
+            error = errno;
 
-            if (recv_size == -1 && (errno == EWOULDBLOCK || errno == EINTR)) {
+            if (recv_size == -1 && (error == EWOULDBLOCK || error == EINTR)) {
                 return;
             } else if (recv_size <= 0) {
 
@@ -793,7 +795,7 @@ void M2MConnectionHandlerPimpl::receive_handler()
 
             }
 
-        } while (recv_size != EWOULDBLOCK);
+        } while (error != EWOULDBLOCK);
 
     }
 

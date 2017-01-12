@@ -658,7 +658,7 @@ int M2MConnectionHandlerPimpl::receive_from_socket(unsigned char *buf,
     tr_debug("receive_from_socket - recv_len=%d, error=%s", recv_len, strerror(error));
     if (recv_len != -1) {
         return recv_len;
-    } else if (error == EWOULDBLOCK) {
+    } else if (error == EWOULDBLOCK || error == EAGAIN) {
         return M2MConnectionHandler::CONNECTION_ERROR_WANTS_READ;
     } else {
         tr_info("Socket returned: %d", (int)recv_len);
@@ -753,7 +753,7 @@ void M2MConnectionHandlerPimpl::receive_handler()
             recv_size = recv(_socket, _recv_buffer, sizeof(_recv_buffer), 0);
             error = errno;
 
-            if (recv_size == -1 && (error == EWOULDBLOCK || error == EINTR)) {
+            if (recv_size == -1 && (error == EWOULDBLOCK || error == EAGAIN || error == EINTR)) {
                 return;
             } else if (recv_size <= 0) {
 
@@ -795,7 +795,7 @@ void M2MConnectionHandlerPimpl::receive_handler()
 
             }
 
-        } while (error != EWOULDBLOCK);
+        } while (!(error == EWOULDBLOCK || error == EAGAIN));
 
     }
 

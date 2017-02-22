@@ -16,8 +16,8 @@ INCLUDE_DIRS =\
   ../../../../yotta_modules/mbed-client/source\
   ../../../../yotta_modules/mbed-client/source/include\
   ../../../../yotta_modules/mbed-client-c\
-  ../../../../yotta_modules/mbed-client-c/source/libNsdl\
-  ../../../../yotta_modules/mbed-client-c/source/libNsdl/src/include\
+  ../../../../yotta_modules/mbed-client-c/source\
+  ../../../../yotta_modules/mbed-coap/mbed-coap\
   ../../../../yotta_modules/nanostack-libservice\
   ../../../../yotta_modules/mbed-trace\
   /usr/include\

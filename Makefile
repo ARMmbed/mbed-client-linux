@@ -37,6 +37,7 @@ clean: clean-extra
 $(TESTDIRS):
 	@yotta target x86-linux-native
 	@yotta install mbed-client
+	@yotta install mbed-client-c
 	@make -C $(@:build-%=%)
 
 $(CLEANDIRS):
@@ -68,6 +69,7 @@ test: $(TESTDIRS)
 	@lcov -q -r $(COVERAGEFILE) "/mbed-client/*" -o $(COVERAGEFILE)
 	@genhtml -q $(COVERAGEFILE) --show-details --output-directory lcov/html
 	@yotta uninstall mbed-client
+	@yotta uninstall mbed-client-c
 	@echo mbed-clientlinux module unit tests built
 
 clean-extra: $(CLEANDIRS) \
